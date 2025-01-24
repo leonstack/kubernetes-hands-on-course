@@ -30,7 +30,14 @@
 ### 2.1 命令语法详解
 
 ```bash
-kubectl port-forward [TYPE/NAME] [LOCAL_PORT]:[REMOTE_PORT] [options]
+kubectl port-forward TYPE/NAME [options] [LOCAL_PORT:]REMOTE_PORT [...[LOCAL_PORT_N:]REMOTE_PORT_N]
+
+Options:
+      --address=[localhost]: Addresses to listen on (comma separated). Only accepts IP addresses or localhost as a
+value. When localhost is supplied, kubectl will try to bind on both 127.0.0.1 and ::1 and will fail if neither of these
+addresses are available to bind.
+      --pod-running-timeout=1m0s: The length of time (like 5s, 2m, or 3h, higher than zero) to wait until at least one
+pod is running
 ```
 
 **核心参数说明**
@@ -50,13 +57,41 @@ kubectl port-forward pod/nginx 8080:80
 # Deployment 转发（自动选择最新Pod）
 kubectl port-forward deployment/nginx 8080:80
 
-# Service 转发（随机选择后端Pod）
+# Service 转发（自动选择最新Pod）
 kubectl port-forward svc/mysql 3306:3306
 
 # StatefulSet 转发（指定序号Pod）
 kubectl port-forward sts/redis-1 6379:6379
 ```
 
+> 注意：如果有多个 Pod 符合条件，则会自动选择一个 Pod。当选定的 Pod 终止时，转发会话结束，需要重新运行命令才能恢复转发。Pod 选择代码请参考：[attachablePodForObject](https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/staging/src/k8s.io/kubectl/pkg/polymorphichelpers/attachablepodforobject.go#L32)
+
+```bash
+// attachablePodForObject returns the pod to which to attach given an object.
+func attachablePodForObject(restClientGetter genericclioptions.RESTClientGetter, object runtime.Object, timeout time.Duration) (*corev1.Pod, error) {
+	switch t := object.(type) {
+	case *corev1.Pod:
+		return t, nil
+	}
+
+	clientConfig, err := restClientGetter.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	clientset, err := corev1client.NewForConfig(clientConfig)
+	if err != nil {
+		return nil, err
+	}
+
+	namespace, selector, err := SelectorsForObject(object)
+	if err != nil {
+		return nil, fmt.Errorf("cannot attach to %T: %v", object, err)
+	}
+	sortBy := func(pods []*corev1.Pod) sort.Interface { return sort.Reverse(podutils.ActivePods(pods)) }
+	pod, _, err := GetFirstPod(clientset, namespace, selector.String(), timeout, sortBy)
+	return pod, err
+}
+```
 ### 2.3 高级转发模式
 #### 2.3.1 多端口转发
 
