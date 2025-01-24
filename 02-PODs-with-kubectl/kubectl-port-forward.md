@@ -58,10 +58,7 @@ kubectl port-forward pod/nginx 8080:80
 kubectl port-forward deployment/nginx 8080:80
 
 # Service 转发（自动选择最新Pod）
-kubectl port-forward svc/mysql 3306:3306
-
-# StatefulSet 转发（指定序号Pod）
-kubectl port-forward sts/redis-1 6379:6379
+kubectl port-forward service/mysql 3306:3306
 ```
 
 > 注意：如果有多个 Pod 符合条件，则会自动选择一个 Pod。当选定的 Pod 终止时，转发会话结束，需要重新运行命令才能恢复转发。Pod 选择代码请参考：[attachablePodForObject](https://github.com/kubernetes/kubernetes/blob/58178e7f7aab455bc8de88d3bdd314b64141e7ee/staging/src/k8s.io/kubectl/pkg/polymorphichelpers/attachablepodforobject.go#L32)
@@ -109,7 +106,7 @@ nohup kubectl port-forward pod/nginx 8080:80 > portforward.log 2>&1 < /dev/null 
 ## 3. 端口转发原理剖析
 ### 3.1 流程图
 
-**mermaid 语法：**
+**简化流程图：**
 
 ```mermaid
 sequenceDiagram
@@ -128,6 +125,42 @@ sequenceDiagram
         Pod->>Kubelet: 返回响应数据
         Kubelet->>API: 回传数据流
         API->>User: 返回最终结果
+    end
+```
+
+> 参考：[Container Runtime Interface streaming explained](https://kubernetes.io/blog/2024/05/01/cri-streaming-explained/)
+
+**完整流程图：**
+
+```mermaid
+sequenceDiagram
+    participant crictl
+    participant kubectl
+    participant API Server
+    participant kubelet
+    participant Container Runtime
+    participant Streaming Server
+    alt [kubectl]
+        Note over kubelet,Container Runtime: Container Runtime Interface (CRI)
+        kubectl->>API Server: exec, attach, port-forward
+        API Server->>kubelet: 
+        kubelet->>Container Runtime: Exec, Attach, PortForward
+    else [crictl]
+        Note over crictl,Container Runtime: Container Runtime Interface (CRI)
+        crictl->>Container Runtime: exec, attach, port-forward
+    end
+    Container Runtime->>Streaming Server: New Session
+    Streaming Server-->>Container Runtime: HTTP endpoint (URL)
+    alt [kubectl]
+        Container Runtime->>kubelet: Response URL
+        kubelet->>API Server: 
+        API Server-->>Streaming Server: Connection upgrade (SPDY or WebSocket)
+        Streaming Server ->> API Server: Stream data
+        API Server->>kubectl: Stream data
+    else  [crictl]
+        Container Runtime->>crictl: Response URL
+        crictl-->>Streaming Server: Connection upgrade (SPDY or WebSocket)
+        Streaming Server->>crictl: Stream data
     end
 ```
 
