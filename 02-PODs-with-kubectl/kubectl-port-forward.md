@@ -58,13 +58,13 @@ kubectl port-forward sts/redis-1 6379:6379
 ```
 
 ### 2.3 高级转发模式
-#### 多端口转发：
+#### 2.3.1 多端口转发
 
 ```bash
 kubectl port-forward pod/nginx 8080:80 8443:443
 ```
 
-#### 后台运行：
+#### 2.3.2 后台运行
 
 ```bash
 # 使用 nohup 防止终端关闭后进程终止
@@ -72,7 +72,7 @@ nohup kubectl port-forward pod/nginx 8080:80 > portforward.log 2>&1 < /dev/null 
 ```
 
 ## 3. 端口转发原理剖析
-### 3.1 架构流程图解
+### 3.1 流程图
 
 **mermaid 语法：**
 
@@ -95,10 +95,8 @@ sequenceDiagram
         API->>User: 返回最终结果
     end
 ```
-**流程图**：
-![](kubectl-port-forward.png)
 
-### 3.2 安全机制：
+### 3.2 安全机制
 1. **双向认证**：基于 `kubeconfig` 的客户端证书认证
 2. **RBAC控制**：需要以下权限：
    
@@ -122,7 +120,7 @@ kubectl port-forward svc/mysql-service 3306:3306 --address 0.0.0.0 &
 mysql -h 127.0.0.1 -u root -p -e "SHOW DATABASES;"
 ```
 
-#### 连接验证结果：
+**验证结果：**
 
 ```sql
 +--------------------+
@@ -166,7 +164,7 @@ grafana-cli --address http://localhost:9090 admin reset-admin-password newpass
 | `error: listen tcp 127.0.0.1:8080: bind: address already in use` | **端口冲突**        | **更换端口或杀死占用进程**：`lsof -i :8080`                |
 | `error: timed out waiting for the condition` | **Pod启动超时**      | **增加超时参数**：`--pod-running-timeout=5m`               |
 
-### 5.2 性能优化技巧
+### 5.2 性能优化
 
 1. **批量转发**：同时转发多个相关端口
    
@@ -248,4 +246,3 @@ grafana-cli --address http://localhost:9090 admin reset-admin-password newpass
 - [**Kubernetes 1.31: Streaming Transitions from SPDY to WebSockets**](https://kubernetes.io/blog/2024/08/20/websockets-transition/)
 - [**SPDY Deprecation Issue**](https://github.com/kubernetes/kubernetes/issues/7452)
 - [**Port-forward for UDP**](https://github.com/kubernetes/kubernetes/issues/47862)
-
