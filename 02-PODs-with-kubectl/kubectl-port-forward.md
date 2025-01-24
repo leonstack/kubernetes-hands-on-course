@@ -84,7 +84,7 @@ sequenceDiagram
     participant Pod as 目标 Pod
 
     User->>API: 发起 port-forward 请求
-    API->>Kubelet: 建立转发通道（SPDY/HTTP2）
+    API->>Kubelet: 建立转发通道（SPDY/WebSocket）
     Kubelet->>Pod: 创建流量代理
     loop 持续连接
         User->>API: 发送数据流
@@ -96,7 +96,7 @@ sequenceDiagram
     end
 ```
 **流程图**：
-![](kubectl-forward-process.png)
+![](kubectl-port-forward.png)
 
 ### 3.2 安全机制：
 1. **双向认证**：基于 `kubeconfig` 的客户端证书认证
