@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Grissom's Kubernetes Demo - Docker Build Script
 # 用于构建所有版本的nginx镜像
+# 作者: Grissom
+# 版本: v1.0.0
+# 日期: 2025-06-20
 
 set -e  # 遇到错误时退出
 

@@ -1,14 +1,65 @@
+# Kubernetes NodePort Service 定义文件
+# 为 Deployment 提供网络访问入口
+
 apiVersion: v1
 kind: Service
 metadata:
   name: deployment-nodeport-service
-spec:
-  type: NodePort 
-  selector: 
+  labels:
     app: myapp3
-  ports: 
-    - name: http
-      port: 80
-      targetPort: 80
-      nodePort: 31233
+    version: v3.0
+    tier: frontend
+    service-type: nodeport
+  annotations:
+    description: "NodePort service for myapp3 deployment"
+    service.beta.kubernetes.io/external-traffic: "OnlyLocal"
+spec:
+  # Service 类型
+  type: NodePort
+  
+  # Pod 选择器 - 必须匹配 Deployment 中的 Pod 标签
+  selector:
+    app: myapp3
+    version: v3.0
+  
+  # 端口配置
+  ports:
+  - name: http
+    port: 80              # Service 端口
+    targetPort: http      # 容器端口（可以是端口号或端口名称）
+    nodePort: 31233       # 节点端口（30000-32767）
+    protocol: TCP
+  
+  # 会话亲和性（可选）
+  sessionAffinity: None   # None 或 ClientIP
+  
+  # 外部流量策略（可选）
+  externalTrafficPolicy: Local  # Local 或 Cluster
+
+---
+# Service 字段说明:
+# - type: Service 类型（ClusterIP, NodePort, LoadBalancer, ExternalName）
+# - selector: 选择后端 Pod 的标签选择器
+# - ports: 端口映射配置
+#   - port: Service 暴露的端口
+#   - targetPort: Pod 中容器的端口
+#   - nodePort: 节点上暴露的端口（仅 NodePort 和 LoadBalancer）
+# - sessionAffinity: 会话亲和性
+# - externalTrafficPolicy: 外部流量策略
+
+# 网络访问方式:
+# 1. 集群内部访问: http://deployment-nodeport-service:80
+# 2. 外部访问: http://<NodeIP>:31233
+# 3. 端口转发: kubectl port-forward svc/deployment-nodeport-service 8080:80
+
+# 负载均衡说明:
+# Service 会自动在所有匹配的 Pod 之间进行负载均衡
+# 默认使用轮询（round-robin）算法
+# 可以通过 sessionAffinity 设置会话保持
+
+# 重要提示:
+# 1. selector 必须与 Deployment 中的 Pod 标签匹配
+# 2. nodePort 范围为 30000-32767
+# 3. 生产环境建议使用 LoadBalancer 或 Ingress
+# 4. externalTrafficPolicy: Local 可以保留客户端 IP
     

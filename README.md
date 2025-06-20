@@ -1,157 +1,244 @@
-# Kubernetes 基础教程
+# Kubernetes 实战课程
 
-[![Image](https://stacksimplify.com/course-images/AWS-EKS-Kubernetes-Masterclass-DevOps-Microservices-course.png "AWS EKS Kubernetes - 大师班")](https://www.udemy.com/course/aws-eks-kubernetes-masterclass-devops-microservices/?referralCode=257C9AD5B5AF8D12D1E1)
+## 1. 课程简介
 
-## Udemy 上的两门免费课程
+欢迎来到 Kubernetes 实战课程！本课程提供了从零开始学习 Kubernetes 的完整路径，通过循序渐进的实践教程，帮助您掌握容器编排的核心技能。课程涵盖了从基础概念到生产级部署的所有关键知识点。
 
-- [AWS 云上 Kubernetes 绝对初学者教程 | 第一部分](https://www.udemy.com/course/kubernetes-for-absolute-beginners-on-aws-cloud-part-1)
-- [AWS 云上 Kubernetes 绝对初学者教程 | 第二部分](https://www.udemy.com/course/kubernetes-for-absolute-beginners-on-aws-cloud-part-2)
+## 2. 课程特色
 
-## 目录
+- **🎯 实战导向**：每个章节都包含完整的实践案例
+- **📖 循序渐进**：从基础概念到高级应用，逐步深入
+- **🛠️ 工具齐全**：提供完整的配置文件和演示脚本
+- **💡 最佳实践**：融入生产环境的经验和最佳实践
+- **🔧 故障排除**：包含常见问题的诊断和解决方案
 
-| 序号 | 课程内容 |
-| ---- | --------------- |
-| 1. | Kubernetes 架构  |
-| 2. | 使用 kubectl 管理 Pod  |
-| 3. | 使用 kubectl 管理 ReplicaSet  |
-| 4. | 使用 kubectl 管理 Deployment  |
-| 5. | 使用 kubectl 管理 Service  |
-| 6. | YAML 基础  |
-| 7. | 使用 YAML 管理 Pod  |
-| 8. | 使用 YAML 管理 ReplicaSet  |
-| 9. | 使用 YAML 管理 Deployment  |
-| 10. | 使用 YAML 管理 Service  |
+## 3. 学习目标
 
-## 命令式和声明式方法
+完成本课程后，您将能够：
 
-- Pod
-- ReplicaSet
-- Deployment
-- Service
+✅ **理解 Kubernetes 架构**：掌握核心组件和工作原理  
+✅ **管理容器化应用**：熟练使用 Pod、ReplicaSet、Deployment  
+✅ **配置网络服务**：掌握 Service 的各种类型和使用场景  
+✅ **编写 YAML 配置**：能够编写和维护复杂的 Kubernetes 配置  
+✅ **实施最佳实践**：应用生产级的部署和运维策略  
+✅ **故障排除能力**：具备诊断和解决常见问题的能力  
 
-## Docker 镜像列表
+## 4. 课程大纲
 
-| 应用程序名称  | Docker 镜像名称 |
-| ----------------- | ----------------- |
-| 简单 Nginx V1  | grissomsh/kubenginx:1.0.0  |
-| Spring Boot Hello World API  | grissomsh/kube-helloworld:1.0.0  |
-| 简单 Nginx V2  | grissomsh/kubenginx:2.0.0  |
-| 简单 Nginx V3  | grissomsh/kubenginx:3.0.0  |
-| 简单 Nginx V4  | grissomsh/kubenginx:4.0.0  |
-| 后端应用程序  | grissomsh/kube-helloworld:1.0.0  |
-| 前端应用程序  | grissomsh/kube-frontend-nginx:1.0.0  |
+### 第一部分：基础概念与架构
 
-## Kubernetes 基础教程 - 逐步学习
+#### 1.1 [Kubernetes 架构](./01-Kubernetes-Architecture/)
 
-### EKS - 安装 AWS CLI、kubectl CLI 和 eksctl CLI
+**学习重点：** 理解 Kubernetes 的整体架构和核心组件
 
-- **步骤 01：** CLI 工具介绍
-- **步骤 02：** 安装 AWS CLI
-- **步骤 03：** 安装 kubectl CLI
-- **步骤 04：** 安装 eksctl CLI
+- 🏗️ **传统部署挑战**：了解容器化和编排的必要性
+- 🔧 **核心组件介绍**：Master 节点、Worker 节点、etcd、API Server
+- 🌐 **网络架构**：Pod 网络、Service 网络、Ingress
+- 💡 **设计理念**：声明式管理、控制器模式、自愈机制
 
-### EKS - 使用 eksctl 创建集群
+**适用场景：** 架构设计、技术选型、团队培训
 
-- **步骤 01：** EKS 集群介绍
-- **步骤 02：** 创建 EKS 集群
-- **步骤 03：** 在公有子网中创建 IAM OIDC 提供者和托管节点组
-- **步骤 04：** 验证 EKS 集群节点组
+---
 
-### EKS 集群定价说明和删除集群
+### 第二部分：kubectl 命令行实践
 
-- **步骤 01：** EKS 集群定价说明
-- **步骤 02：** 删除 EKS 集群节点组
+#### 2.1 [PODs with kubectl](./02-PODs-with-kubectl/)
 
-### Kubernetes 架构
+**学习重点：** 掌握 Pod 的基本概念和 kubectl 操作
 
-- **步骤 01：** Kubernetes 架构
-- **步骤 02：** Kubernetes vs AWS EKS 架构
-- **步骤 03：** Kubernetes 基础 - 介绍
+- 🚀 **Pod 基础**：理解 Pod 的概念和生命周期
+- 🔧 **kubectl 操作**：创建、查看、删除 Pod
+- 🌐 **多容器 Pod**：Sidecar、Ambassador、Adapter 模式
+- 🔍 **调试技巧**：日志查看、容器进入、端口转发
 
-### Kubernetes - 使用 kubectl 管理 Pod
+**适用场景：** 开发调试、故障排除、基础运维
 
-- **步骤 01：** Pod 介绍
-- **步骤 02：** Pod 演示
-- **步骤 03：** NodePort Service 介绍
-- **步骤 04：** NodePort Service 和 Pod 演示
-- **步骤 05：** 与 Pod 交互 - 连接到 Pod 中的容器
-- **步骤 06：** 删除 Pod
+#### 2.2 [ReplicaSets with kubectl](./03-ReplicaSets-with-kubectl/)
 
-### Kubernetes - 使用 kubectl 管理 ReplicaSet
+**学习重点：** 理解副本控制和高可用性
 
-- **步骤 01：** ReplicaSet 介绍
-- **步骤 02：** 创建 ReplicaSet
-- **步骤 03：** 暴露服务并执行高可用性测试，然后删除 ReplicaSet
+- 📈 **副本管理**：自动维护指定数量的 Pod 副本
+- 🔄 **故障恢复**：Pod 失败时的自动重建机制
+- 🏷️ **标签选择器**：基于标签的 Pod 管理
+- 📊 **扩缩容操作**：动态调整副本数量
 
-### Kubernetes - 使用 kubectl 管理 Deployment
+**适用场景：** 高可用部署、负载分担、故障恢复
 
-- **步骤 02：** Deployment 演示
-- **步骤 03：** 使用 Set Image 选项更新 Deployment
-- **步骤 04：** 使用 kubectl edit 编辑 Deployment
-- **步骤 05：** 回滚应用程序到之前版本 - 撤销 Deployment
-- **步骤 06：** 暂停和恢复 Deployment
+#### 2.3 [Deployments with kubectl](./04-Deployments-with-kubectl/)
 
-### Kubernetes - 使用 kubectl 管理 Service
+**学习重点：** 掌握应用部署和版本管理
 
-- **步骤 01：** Service 介绍
-- **步骤 02：** Service 演示
+- 🚀 **创建和扩展**：Deployment 基础操作和服务暴露
+- 🔄 **滚动更新**：零停机时间的应用程序更新
+- ⏪ **版本回滚**：快速回退到之前的稳定版本
+- ⏸️ **暂停和恢复**：控制部署过程的执行
 
-### YAML 基础
+**适用场景：** 生产部署、版本管理、持续交付
 
-- **步骤 01：** Kubernetes 声明式方法介绍
-- **步骤 02：** YAML 基础
+#### 2.4 [Services with kubectl](./05-Services-with-kubectl/)
 
-### Kubernetes - 使用 YAML 管理 Pod
+**学习重点：** 实现服务发现和负载均衡
 
-- **步骤 01：** 使用 YAML 创建 Pod 清单
-- **步骤 02：** 创建 NodePort Service 并测试
+- 🌐 **Service 类型**：ClusterIP、NodePort、LoadBalancer、ExternalName
+- 🔍 **服务发现**：集群内部服务的自动发现机制
+- ⚖️ **负载均衡**：流量在多个 Pod 间的分发
+- 🏗️ **完整架构**：前后端分离应用的网络架构
 
-### Kubernetes - 使用 YAML 管理 ReplicaSet
+**适用场景：** 微服务架构、服务网格、外部访问
 
-- **步骤 01：** 使用 YAML 创建 ReplicaSet 清单
-- **步骤 02：** 创建 NodePort Service 并测试
+---
 
-### Kubernetes - 使用 YAML 管理 Deployment
+### 第三部分：YAML 声明式管理
 
-- **步骤 01：** 创建 Deployment 清单、部署并测试
+#### 3.1 [YAML 基础](./06-YAML-Basics/)
 
-### Kubernetes - 使用 YAML 管理 Service
+**学习重点：** 掌握 YAML 语法和最佳实践
 
-- **步骤 01：** 后端应用程序 - 创建 Deployment 和 ClusterIP Service
-- **步骤 02：** 前端应用程序 - 创建 Deployment 和 NodePort Service
-- **步骤 03：** 部署和测试 - 前端和后端应用程序
+- 📝 **基础语法**：缩进、键值对、列表、注释
+- 🔧 **数据类型**：标量、序列、映射、多行字符串
+- ⚠️ **常见陷阱**：缩进错误、特殊字符、类型转换
+- 🛠️ **工具推荐**：编辑器配置、验证工具、格式化工具
 
-## 学生将在本课程中学到什么？
+**适用场景：** 配置管理、基础设施即代码、CI/CD 流水线
 
-- 您将学习使用 kubectl 创建 Pod、ReplicaSet、Deployment 和 Service
-- 您将学习使用 YAML 创建 Pod、ReplicaSet、Deployment 和 Service
-- 通过实时模板编写部分，您将能够自信地使用 YAML 编写 Kubernetes 清单
-- 您将学习命令式和声明式两种方法的 Kubernetes 基础知识
-- 您将学习使用 eksctl CLI 创建 AWS EKS 集群
-- 在学习过程中您将掌握许多 kubectl 命令
-- 您将获得使用 GitHub 仓库记录的逐步说明
+#### 3.2 [PODs with YAML](./07-PODs-with-YAML/)
 
-## 课程有什么要求或先决条件吗？
+**学习重点：** 使用 YAML 文件管理 Pod 资源
 
-- 您必须拥有 AWS 账户才能跟随我进行实践活动。
-- 您不需要具备任何 Kubernetes 基础知识即可开始本课程。
+- 📄 **YAML 结构**：apiVersion、kind、metadata、spec
+- 🔧 **Pod 配置**：容器定义、资源限制、环境变量
+- 🌐 **网络配置**：端口映射、主机网络、DNS 设置
+- 🔒 **安全配置**：安全上下文、权限控制、密钥管理
 
-## 谁是您的目标学生？
+**适用场景：** 声明式管理、版本控制、自动化部署
 
-- 任何有兴趣使用 AWS EKS 在云上学习 Kubernetes 的初学者。
-- 计划掌握弹性 Kubernetes 服务 (EKS) 以在 Kubernetes 上运行应用程序的 AWS 架构师、系统管理员或开发人员
+#### 3.3 [ReplicaSets with YAML](./08-ReplicaSets-with-YAML/)
 
-## 我的每门课程都包含
+**学习重点：** 声明式副本控制和标签管理
 
-- 令人惊叹的逐步实践学习体验
-- 真实的实施经验
-- 在问答部分提供友好的支持
-- 30 天"无条件"退款保证！
+- 🏷️ **标签选择器**：matchLabels 和 matchExpressions
+- 📊 **副本策略**：期望副本数、最大不可用数
+- 🔄 **Pod 模板**：统一的 Pod 配置模板
+- 🛠️ **故障恢复**：自动检测和替换失败的 Pod
 
-## 我的其他 AWS 课程
+**适用场景：** 高可用架构、自动化运维、容灾备份
 
-- [Udemy 注册](https://github.com/grissomsh/udemy-enroll)
+#### 3.4 [Deployments with YAML](./09-Deployments-with-YAML/)
 
-## Stack Simplify Udemy 个人资料
+**学习重点：** 生产级应用部署策略
 
-- [Udemy 个人资料](https://www.udemy.com/user/kalyan-reddy-9/)
+- 🚀 **部署策略**：RollingUpdate、Recreate 策略配置
+- 📈 **更新控制**：maxSurge、maxUnavailable 参数
+- 📚 **版本历史**：revisionHistoryLimit 和回滚机制
+- 🔍 **健康检查**：readinessProbe、livenessProbe 配置
+
+**适用场景：** 生产部署、持续集成、发布管理
+
+#### 3.5 [Services with YAML](./10-Services-with-YAML/)
+
+**学习重点：** 完整的服务网络架构
+
+- 🌐 **ClusterIP Service**：集群内部服务发现
+- 🚪 **NodePort Service**：外部访问入口
+- ⚖️ **负载均衡**：会话亲和性、流量分发策略
+- 🏗️ **前后端架构**：完整的微服务网络拓扑
+
+**适用场景：** 微服务架构、API 网关、服务网格
+
+---
+
+## 4. 🛠️ 环境要求
+
+### 4.1 基础环境
+
+- **Kubernetes 集群**：v1.20+ （推荐 v1.25+）
+- **kubectl 工具**：与集群版本兼容
+- **操作系统**：Linux、macOS 或 Windows（WSL2）
+- **内存要求**：至少 4GB RAM
+- **存储空间**：至少 10GB 可用空间
+
+### 4.2 推荐工具
+
+- **代码编辑器**：VS Code + Kubernetes 扩展
+- **终端工具**：支持多标签的终端（iTerm2、Windows Terminal）
+- **容器运行时**：Docker Desktop 或 Podman
+- **网络工具**：curl、wget、telnet
+
+### 4.3 环境验证
+
+```bash
+# 检查 kubectl 版本
+kubectl version --client
+
+# 检查集群连接
+kubectl cluster-info
+
+# 检查节点状态
+kubectl get nodes
+
+# 检查当前上下文
+kubectl config current-context
+```
+
+## 5. 🚀 快速开始
+
+### 5.1 克隆课程仓库
+
+```bash
+git clone <repository-url>
+cd kubernetes-fundamentals
+```
+
+### 5.2 验证环境
+
+```bash
+# 运行环境检查脚本
+./scripts/check-environment.sh
+```
+
+### 5.3 开始学习
+
+建议按照以下顺序学习：
+
+1. **理论基础**：从 `01-Kubernetes-Architecture` 开始
+2. **命令行实践**：完成 `02-PODs-with-kubectl` 到 `05-Services-with-kubectl`
+3. **声明式管理**：学习 `06-YAML-Basics` 到 `10-Services-with-YAML`
+
+每个章节都包含：
+
+- 📖 详细的理论说明
+- 🛠️ 完整的实践步骤
+- 📄 可运行的配置文件
+- 🔧 自动化演示脚本
+- ❓ 常见问题解答
+
+## 6. 📖 学习建议
+
+### 6.1 学习路径
+
+#### 6.1.1 初学者路径（4-6 周）
+
+- 第 1 周：架构理解 + Pod 基础
+- 第 2 周：ReplicaSet + Deployment
+- 第 3 周：Service + 网络基础
+- 第 4 周：YAML 基础 + 声明式管理
+- 第 5-6 周：综合实践 + 项目应用
+
+#### 6.1.2 进阶路径（2-3 周）
+
+- 第 1 周：快速回顾 + kubectl 实践
+- 第 2 周：YAML 深入 + 生产实践
+- 第 3 周：最佳实践 + 故障排除
+
+### 6.2 实践建议
+
+- **动手实践**：每个概念都要亲自操作验证
+- **记录笔记**：记录重要命令和配置模式
+- **问题驱动**：遇到问题时深入研究原理
+- **项目应用**：将学到的知识应用到实际项目中
+
+---
+
+**开始您的 Kubernetes 学习之旅吧！** 🚀
+
+每一个伟大的容器编排专家都是从第一个 Pod 开始的。让我们一起探索 Kubernetes 的精彩世界！

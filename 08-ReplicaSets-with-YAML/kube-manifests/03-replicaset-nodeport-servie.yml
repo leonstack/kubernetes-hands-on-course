@@ -1,14 +1,87 @@
+# NodePort Service 定义文件
+# 为 ReplicaSet 管理的 Pod 提供外部网络访问
+
 apiVersion: v1
 kind: Service
 metadata:
   name: replicaset-nodeport-service
+  labels:
+    app: myapp2
+    version: v2.0
+    service-type: nodeport
+    tier: frontend
+  annotations:
+    description: "NodePort service for myapp2 ReplicaSet"
+    service.beta.kubernetes.io/external-traffic: OnlyLocal
 spec:
-  type: NodePort 
-  selector: 
-    app: myapp2 
-  ports: 
-    - name: http
-      port: 80
-      targetPort: 80
-      nodePort: 31232
+  # Service 类型 - NodePort 允许外部访问
+  type: NodePort
+  
+  # 标签选择器 - 必须匹配 ReplicaSet Pod 的标签
+  selector:
+    app: myapp2
+    version: v2.0
+  
+  # 端口配置
+  ports:
+  - name: http
+    port: 80                 # Service 端口
+    targetPort: http         # Pod 端口（可以是端口号或端口名称）
+    nodePort: 31232          # 节点端口（30000-32767 范围）
+    protocol: TCP
+  
+  # 会话亲和性 - None 表示随机分发请求
+  sessionAffinity: None
+  
+  # 外部流量策略
+  # Cluster: 流量可以转发到任何节点的 Pod
+  # Local: 流量只转发到本节点的 Pod（保留源 IP）
+  externalTrafficPolicy: Cluster
+
+# Service 字段说明：
+# type: Service 类型
+#   - ClusterIP: 仅集群内部访问（默认）
+#   - NodePort: 通过节点端口外部访问
+#   - LoadBalancer: 通过云负载均衡器访问
+#   - ExternalName: DNS 映射到外部服务
+#
+# selector: 用于选择后端 Pod 的标签选择器
+#   必须匹配 ReplicaSet Pod 模板中的标签
+#
+# ports: 端口映射配置
+#   - port: Service 暴露的端口
+#   - targetPort: Pod 容器的端口
+#   - nodePort: 节点上的端口（NodePort 类型必需）
+#   - protocol: 协议类型（TCP/UDP）
+#
+# sessionAffinity: 会话亲和性
+#   - None: 随机分发（默认）
+#   - ClientIP: 基于客户端 IP 的会话保持
+#
+# externalTrafficPolicy: 外部流量策略
+#   - Cluster: 流量可以转发到任何节点（默认）
+#   - Local: 流量只转发到本节点，保留源 IP
+
+# 网络访问方式：
+# 1. 集群内部访问：
+#    http://replicaset-nodeport-service:80
+#    http://replicaset-nodeport-service.default.svc.cluster.local:80
+#
+# 2. 外部访问（NodePort）：
+#    http://<任意节点IP>:31232
+#
+# 3. 端口转发测试：
+#    kubectl port-forward service/replicaset-nodeport-service 8080:80
+#    http://localhost:8080
+
+# 负载均衡：
+# Service 会自动在所有匹配标签的健康 Pod 之间进行负载均衡
+# 使用 iptables 或 IPVS 实现流量分发
+
+# 重要提示：
+# 1. selector 必须匹配 ReplicaSet Pod 的标签
+# 2. NodePort 范围通常是 30000-32767
+# 3. 如果不指定 nodePort，系统会自动分配
+# 4. 生产环境建议使用 LoadBalancer 或 Ingress
+# 5. 注意防火墙规则，确保 NodePort 端口可访问
     

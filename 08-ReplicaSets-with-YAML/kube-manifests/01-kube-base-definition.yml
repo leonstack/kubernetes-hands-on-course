@@ -1,6 +1,69 @@
-apiVersion:
-kind:
+# Kubernetes YAML 基础模板
+# 这个文件展示了 Kubernetes 资源的基本结构
+
+# API 版本 - 指定使用的 Kubernetes API 版本
+apiVersion: apps/v1  # 对于 ReplicaSet 使用 apps/v1
+
+# 资源类型 - 指定要创建的 Kubernetes 对象类型
+kind: ReplicaSet
+
+# 元数据 - 包含资源的基本信息
 metadata:
-  
+  name: example-replicaset     # 资源名称（必需）
+  namespace: default           # 命名空间（可选，默认为 default）
+  labels:                      # 标签（可选但推荐）
+    app: example
+    version: v1.0
+    tier: frontend
+  annotations:                 # 注解（可选）
+    description: "Example ReplicaSet configuration"
+    maintainer: "devops-team@company.com"
+
+# 规格说明 - 定义资源的期望状态
 spec:
+  replicas: 3                  # 期望的 Pod 副本数量
+  
+  # 标签选择器 - 用于选择管理的 Pod
+  selector:
+    matchLabels:
+      app: example
+  
+  # Pod 模板 - 定义创建 Pod 的模板
+  template:
+    metadata:
+      labels:
+        app: example           # 必须匹配上面的 selector
+        version: v1.0
+    spec:
+      containers:
+      - name: example-container
+        image: nginx:1.20
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "250m"
+          limits:
+            memory: "128Mi"
+            cpu: "500m"
+
+# 常见的 Kubernetes 对象类型：
+# - Pod: 最小的部署单元
+# - ReplicaSet: 确保指定数量的 Pod 副本运行
+# - Deployment: 管理 ReplicaSet，提供滚动更新
+# - Service: 为 Pod 提供网络访问
+# - ConfigMap: 配置数据
+# - Secret: 敏感数据
+# - Namespace: 资源隔离
+# - Ingress: HTTP/HTTPS 路由
+
+# 重要字段说明：
+# apiVersion: 必需，指定 API 版本
+# kind: 必需，指定资源类型
+# metadata.name: 必需，资源名称
+# spec: 必需，资源规格说明
+# selector: ReplicaSet 必需，Pod 选择器
+# template: ReplicaSet 必需，Pod 模板
     

@@ -1,3 +1,6 @@
+# 前端 Nginx Deployment 配置
+# 部署 Nginx 应用，提供前端页面并代理后端 API
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,8 +8,21 @@ metadata:
   labels: 
     app: frontend-nginxapp
     tier: frontend
+    version: v1.0.0
+    component: web
+  annotations:
+    description: "Frontend Nginx service for web application"
+    maintainer: "frontend-team@company.com"
+    deployment.kubernetes.io/revision: "1"
 spec:
-  replicas: 3
+  replicas: 3                    # 副本数量，确保高可用性
+  strategy:                      # 更新策略
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1          # 更新时最多不可用的 Pod 数
+      maxSurge: 1                # 更新时最多额外创建的 Pod 数
+  revisionHistoryLimit: 10       # 保留的历史版本数
+  progressDeadlineSeconds: 600   # 部署超时时间（秒）
   selector:
     matchLabels:
       app: frontend-nginxapp
@@ -15,9 +31,144 @@ spec:
       labels:
         app: frontend-nginxapp
         tier: frontend
+        version: v1.0.0
+        component: web
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
     spec:
+      # 安全上下文
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101           # nginx 用户
+        fsGroup: 101
       containers:
         - name: frontend-nginxapp
           image: grissomsh/kube-frontend-nginx:1.0.0
+          imagePullPolicy: IfNotPresent
+          # 容器安全上下文
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+              - ALL
+              add:
+              - CHOWN
+              - SETGID
+              - SETUID
           ports:
-            - containerPort: 80
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          # 资源请求和限制
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "50m"
+            limits:
+              memory: "256Mi"
+              cpu: "200m"
+          # 环境变量
+          env:
+            - name: BACKEND_SERVICE_HOST
+              value: "backend-restapp-clusterip-service"
+            - name: BACKEND_SERVICE_PORT
+              value: "8080"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          # 存活性探针
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # 就绪性探针
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # 启动探针（可选）
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+          # 挂载卷（可选）
+          # volumeMounts:
+          #   - name: nginx-config
+          #     mountPath: /etc/nginx/conf.d
+          #     readOnly: true
+          #   - name: nginx-cache
+          #     mountPath: /var/cache/nginx
+          #   - name: nginx-run
+          #     mountPath: /var/run
+      # 卷定义（可选）
+      # volumes:
+      #   - name: nginx-config
+      #     configMap:
+      #       name: nginx-config
+      #   - name: nginx-cache
+      #     emptyDir: {}
+      #   - name: nginx-run
+      #     emptyDir: {}
+      # 重启策略
+      restartPolicy: Always
+      # DNS 策略
+      dnsPolicy: ClusterFirst
+      # 终止宽限期
+      terminationGracePeriodSeconds: 30
+
+# ========================================
+# 字段说明
+# ========================================
+
+# replicas: Pod 副本数量
+# strategy: 部署更新策略
+#   - RollingUpdate: 滚动更新（默认）
+#   - Recreate: 重新创建
+# selector: Pod 选择器，必须匹配 template.metadata.labels
+# template: Pod 模板定义
+# securityContext: 安全上下文配置
+# resources: 资源请求和限制
+# livenessProbe: 存活性探针，检查容器是否运行
+# readinessProbe: 就绪性探针，检查容器是否准备好接收流量
+# startupProbe: 启动探针，检查容器是否已启动
+
+# ========================================
+# Nginx 配置说明
+# ========================================
+
+# 1. 前端静态文件服务
+# 2. 后端 API 代理转发
+# 3. 负载均衡和缓存
+# 4. 安全头设置
+# 5. 日志记录
+
+# ========================================
+# 重要提示
+# ========================================
+
+# 1. 标签选择器必须与 Pod 模板标签匹配
+# 2. 容器端口名称用于 Service 引用
+# 3. 健康检查路径需要应用支持
+# 4. 资源限制防止容器消耗过多资源
+# 5. 安全上下文提高容器安全性
+# 6. 环境变量配置后端服务地址

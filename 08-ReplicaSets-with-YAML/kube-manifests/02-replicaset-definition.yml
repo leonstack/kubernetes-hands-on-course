@@ -1,23 +1,118 @@
+# ReplicaSet 定义文件
+# 用于创建和管理多个 Pod 副本
+
 apiVersion: apps/v1
 kind: ReplicaSet
 metadata:
-  name: myapp2-rs  
+  name: myapp2-rs
+  labels:
+    app: myapp2
+    version: v2.0
+    tier: frontend
+    component: web
+  annotations:
+    description: "Web application ReplicaSet with 3 replicas"
+    maintainer: "devops-team@company.com"
+    version: "2.0.0"
 spec:
+  # 期望的 Pod 副本数量
   replicas: 3
+  
+  # 标签选择器 - 用于选择管理的 Pod
+  # Pod 模板的标签必须包含这里定义的所有标签
   selector:
     matchLabels:
       app: myapp2
-  template: 
-    metadata: # Dictionary
-      name: myapp2-pod
-      labels: # Dictionary 
-        app: myapp2         
+      version: v2.0
+  
+  # Pod 模板 - 定义如何创建 Pod
+  template:
+    metadata:
+      labels:
+        app: myapp2           # 必须匹配 selector
+        version: v2.0         # 必须匹配 selector
+        tier: frontend        # 额外标签
+        component: web        # 额外标签
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
     spec:
-      containers: # List
-        - name: myapp2-container
-          image: grissomsh/kubenginx:2.0.0
-          ports:
-            - containerPort: 80
+      # 容器定义
+      containers:
+      - name: myapp2-container
+        image: grissomsh/kubenginx:2.0.0
+        imagePullPolicy: IfNotPresent
+        
+        # 端口配置
+        ports:
+        - containerPort: 80
+          name: http
+          protocol: TCP
+        
+        # 资源请求和限制
+        resources:
+          requests:
+            memory: "64Mi"      # 最小内存需求
+            cpu: "250m"         # 最小 CPU 需求
+          limits:
+            memory: "128Mi"     # 最大内存限制
+            cpu: "500m"         # 最大 CPU 限制
+        
+        # 环境变量
+        env:
+        - name: APP_ENV
+          value: "production"
+        - name: LOG_LEVEL
+          value: "info"
+        - name: PORT
+          value: "80"
+        
+        # 存活性探针 - 检查容器是否正在运行
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30  # 首次检查延迟
+          periodSeconds: 10        # 检查间隔
+          timeoutSeconds: 5        # 超时时间
+          failureThreshold: 3      # 失败阈值
+          successThreshold: 1      # 成功阈值
+        
+        # 就绪性探针 - 检查容器是否准备好接收流量
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5   # 首次检查延迟
+          periodSeconds: 5         # 检查间隔
+          timeoutSeconds: 3        # 超时时间
+          failureThreshold: 3      # 失败阈值
+          successThreshold: 1      # 成功阈值
+      
+      # Pod 重启策略
+      restartPolicy: Always
+      
+      # DNS 策略
+      dnsPolicy: ClusterFirst
+      
+      # 终止宽限期（秒）
+      terminationGracePeriodSeconds: 30
+
+# 字段说明：
+# replicas: 期望的 Pod 副本数量
+# selector.matchLabels: 用于选择管理的 Pod 的标签
+# template.metadata.labels: Pod 模板的标签，必须包含 selector 中的所有标签
+# template.spec: Pod 的具体配置
+# resources: 资源请求和限制，用于调度和资源管理
+# livenessProbe: 存活性探针，用于检查容器健康状态
+# readinessProbe: 就绪性探针，用于检查容器是否准备好接收流量
+
+# 重要提示：
+# 1. Pod 模板的标签必须匹配 selector 中的标签
+# 2. 标签选择器一旦创建就不能修改
+# 3. 建议设置资源请求和限制
+# 4. 建议配置健康检查探针
+# 5. 使用有意义的标签和注解
 
 
     

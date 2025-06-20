@@ -1,15 +1,90 @@
-apiVersion: v1 # String
-kind: Pod  # String
-metadata: # Dictionary
-  name: myapp-pod
-  labels: # Dictionary 
-    app: myapp         
-spec:
-  containers: # List
-    - name: myapp
-      image: grissomsh/kubenginx:1.0.0
-      ports:
-        - containerPort: 80
+# Pod 定义文件
+# 创建一个简单的 Web 应用 Pod
+
+apiVersion: v1      # API 版本：v1 是核心 API 组
+kind: Pod           # 资源类型：Pod
+metadata:           # 元数据部分
+  name: myapp-pod   # Pod 名称（在命名空间内唯一）
+  labels:           # 标签（键值对，用于选择和分组）
+    app: myapp      # 应用标识
+    version: v1.0   # 版本标识
+    tier: frontend  # 层级标识
+    environment: development  # 环境标识
+  annotations:      # 注解（存储额外信息）
+    description: "Simple web application pod"
+    maintainer: "devops-team@company.com"
+    created-by: "kubernetes-fundamentals-tutorial"
+spec:               # Pod 规格定义
+  containers:       # 容器列表
+  - name: myapp     # 容器名称
+    image: grissomsh/kubenginx:1.0.0  # 容器镜像
+    imagePullPolicy: IfNotPresent     # 镜像拉取策略
+    ports:          # 端口配置
+    - containerPort: 80    # 容器监听端口
+      name: http           # 端口名称
+      protocol: TCP        # 协议类型
+    resources:      # 资源配置
+      requests:     # 资源请求（调度依据）
+        memory: "64Mi"     # 内存请求
+        cpu: "250m"        # CPU 请求（250 millicores）
+      limits:       # 资源限制（硬限制）
+        memory: "128Mi"    # 内存限制
+        cpu: "500m"        # CPU 限制（500 millicores）
+    env:            # 环境变量
+    - name: APP_ENV
+      value: "development"
+    - name: LOG_LEVEL
+      value: "info"
+    - name: PORT
+      value: "80"
+  restartPolicy: Always  # 重启策略
+  # 可选配置（生产环境推荐）
+  # livenessProbe:   # 存活探针
+  #   httpGet:
+  #     path: /health
+  #     port: 80
+  #   initialDelaySeconds: 30
+  #   periodSeconds: 10
+  # readinessProbe:  # 就绪探针
+  #   httpGet:
+  #     path: /ready
+  #     port: 80
+  #   initialDelaySeconds: 5
+  #   periodSeconds: 5
+
+# ==========================================
+# 字段说明
+# ==========================================
+
+# metadata.name: Pod 名称
+#   - 必须在命名空间内唯一
+#   - 只能包含小写字母、数字和连字符
+#   - 不能以连字符开头或结尾
+
+# metadata.labels: 标签
+#   - 用于资源选择和分组
+#   - Service 通过标签选择器关联 Pod
+#   - 常用标签：app, version, tier, environment
+
+# spec.containers: 容器配置
+#   - Pod 可以包含多个容器
+#   - 容器共享网络和存储
+
+# resources: 资源配置
+#   - requests: 调度器用于选择节点
+#   - limits: 防止容器消耗过多资源
+#   - CPU 单位：m（millicores），1000m = 1 CPU
+#   - 内存单位：Mi（Mebibytes），Gi（Gibibytes）
+
+# imagePullPolicy: 镜像拉取策略
+#   - Always: 总是拉取最新镜像
+#   - IfNotPresent: 本地不存在时才拉取
+#   - Never: 从不拉取，只使用本地镜像
+
+# restartPolicy: 重启策略
+#   - Always: 总是重启（默认）
+#   - OnFailure: 失败时重启
+#   - Never: 从不重启
 
 
     

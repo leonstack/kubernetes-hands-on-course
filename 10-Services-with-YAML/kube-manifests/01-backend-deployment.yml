@@ -1,3 +1,6 @@
+# 后端 REST API Deployment 配置
+# 部署 Spring Boot 应用，提供 /hello 端点服务
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,8 +8,21 @@ metadata:
   labels: 
     app: backend-restapp
     tier: backend
+    version: v1.0.0
+    component: api
+  annotations:
+    description: "Backend REST API service for hello world application"
+    maintainer: "backend-team@company.com"
+    deployment.kubernetes.io/revision: "1"
 spec:
-  replicas: 3
+  replicas: 3                    # 副本数量，确保高可用性
+  strategy:                      # 更新策略
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1          # 更新时最多不可用的 Pod 数
+      maxSurge: 1                # 更新时最多额外创建的 Pod 数
+  revisionHistoryLimit: 10       # 保留的历史版本数
+  progressDeadlineSeconds: 600   # 部署超时时间（秒）
   selector:
     matchLabels:
       app: backend-restapp
@@ -15,9 +31,111 @@ spec:
       labels:
         app: backend-restapp
         tier: backend
+        version: v1.0.0
+        component: api
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/actuator/prometheus"
     spec:
+      # 安全上下文
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 2000
       containers:
         - name: backend-restapp
           image: grissomsh/kube-helloworld:1.0.0
+          imagePullPolicy: IfNotPresent
+          # 容器安全上下文
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+              - ALL
           ports:
-            - containerPort: 8080
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          # 资源请求和限制
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "100m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          # 环境变量
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: SPRING_PROFILES_ACTIVE
+              value: "kubernetes"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          # 存活性探针
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          # 就绪性探针
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # 启动探针（可选）
+          startupProbe:
+            httpGet:
+              path: /actuator/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 30
+      # 重启策略
+      restartPolicy: Always
+      # DNS 策略
+      dnsPolicy: ClusterFirst
+      # 终止宽限期
+      terminationGracePeriodSeconds: 30
+
+# ========================================
+# 字段说明
+# ========================================
+
+# replicas: Pod 副本数量
+# strategy: 部署更新策略
+#   - RollingUpdate: 滚动更新（默认）
+#   - Recreate: 重新创建
+# selector: Pod 选择器，必须匹配 template.metadata.labels
+# template: Pod 模板定义
+# securityContext: 安全上下文配置
+# resources: 资源请求和限制
+# livenessProbe: 存活性探针，检查容器是否运行
+# readinessProbe: 就绪性探针，检查容器是否准备好接收流量
+# startupProbe: 启动探针，检查容器是否已启动
+
+# ========================================
+# 重要提示
+# ========================================
+
+# 1. 标签选择器必须与 Pod 模板标签匹配
+# 2. 容器端口名称用于 Service 引用
+# 3. 健康检查路径需要应用支持
+# 4. 资源限制防止容器消耗过多资源
+# 5. 安全上下文提高容器安全性

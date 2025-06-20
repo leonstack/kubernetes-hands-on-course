@@ -1,7 +1,9 @@
 #!/bin/bash
 
-# Kubernetes POD 快速开始脚本
 # 快速演示单容器和多容器 Pod 的基本操作
+# 作者: Grissom
+# 版本: 1.0.0
+# 日期: 2025-06-20
 
 set -e
 

@@ -1,13 +1,93 @@
+# NodePort Service 定义文件
+# 为 Pod 提供外部访问入口
+
 apiVersion: v1
 kind: Service
 metadata:
-  name: myapp-pod-nodeport-service 
+  name: myapp-pod-nodeport-service  # Service 名称
+  labels:                           # Service 标签
+    app: myapp
+    service-type: nodeport
+    tier: frontend
+  annotations:                      # Service 注解
+    description: "NodePort service for myapp pod"
+    service.beta.kubernetes.io/aws-load-balancer-type: "nlb"  # AWS 示例
 spec:
-  type: NodePort 
-  selector:
-    app: myapp 
-  ports: 
-    - name: http
-      port: 80 # Service Port
-      targetPort: 80 # Container Port
-      nodePort: 31231 # NodePort
+  type: NodePort                    # Service 类型
+  selector:                         # Pod 选择器
+    app: myapp                      # 匹配标签为 app: myapp 的 Pod
+  ports:                            # 端口配置
+  - name: http                      # 端口名称
+    port: 80                        # Service 端口（集群内访问）
+    targetPort: 80                  # Pod 容器端口
+    nodePort: 31231                 # 节点端口（集群外访问）
+    protocol: TCP                   # 协议类型
+  sessionAffinity: None             # 会话亲和性（None 或 ClientIP）
+  # externalTrafficPolicy: Local   # 外部流量策略（Cluster 或 Local）
+
+# ==========================================
+# 字段说明
+# ==========================================
+
+# spec.type: Service 类型
+#   - ClusterIP: 仅集群内部访问（默认）
+#   - NodePort: 通过节点端口对外暴露
+#   - LoadBalancer: 通过云厂商负载均衡器暴露
+#   - ExternalName: 映射到外部服务
+
+# spec.selector: Pod 选择器
+#   - 通过标签选择要代理的 Pod
+#   - 必须与 Pod 的标签匹配
+#   - 支持多个标签的 AND 逻辑
+
+# spec.ports: 端口配置
+#   - port: Service 端口，集群内其他服务访问此端口
+#   - targetPort: Pod 容器端口，Service 将流量转发到此端口
+#   - nodePort: 节点端口，外部客户端通过此端口访问
+#   - protocol: 协议类型（TCP、UDP、SCTP）
+
+# nodePort 端口范围
+#   - 默认范围：30000-32767
+#   - 可通过 --service-node-port-range 参数修改
+#   - 如果不指定，系统会自动分配
+
+# sessionAffinity: 会话亲和性
+#   - None: 不保持会话（默认）
+#   - ClientIP: 基于客户端 IP 保持会话
+
+# externalTrafficPolicy: 外部流量策略
+#   - Cluster: 流量可以转发到任意节点的 Pod（默认）
+#   - Local: 流量只转发到本节点的 Pod
+
+# ==========================================
+# 网络流量路径
+# ==========================================
+
+# 外部访问路径：
+# 客户端 → 节点IP:31231 → Service:80 → Pod:80
+
+# 集群内访问路径：
+# Pod → myapp-pod-nodeport-service:80 → Pod:80
+
+# DNS 解析：
+# - 服务名称: myapp-pod-nodeport-service
+# - 完整域名: myapp-pod-nodeport-service.default.svc.cluster.local
+
+# ==========================================
+# 使用示例
+# ==========================================
+
+# 创建 Service:
+# kubectl apply -f 03-pod-nodeport-service.yml
+
+# 查看 Service:
+# kubectl get svc myapp-pod-nodeport-service
+
+# 查看端点:
+# kubectl get endpoints myapp-pod-nodeport-service
+
+# 测试访问:
+# curl http://<node-ip>:31231
+
+# 删除 Service:
+# kubectl delete -f 03-pod-nodeport-service.yml

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Kubernetes POD 演示脚本
+# 自动化演示 Kubernetes POD 管理的各个步骤
 # 作者: Grissom
 # 版本: 1.0.0
-# 描述: 自动化演示 Kubernetes POD 管理的各个步骤
+# 日期: 2025-06-20
 
 set -e
 

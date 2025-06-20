@@ -1,16 +1,151 @@
+# 前端 NodePort Service 配置
+# 为前端 Deployment 提供外部访问服务
+
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend-nginxapp-nodeport-service
-  labels: 
+  labels:
     app: frontend-nginxapp
-    tier: frontend     
+    tier: frontend
+    version: v1.0.0
+    component: web
+    service-type: nodeport
+  annotations:
+    description: "NodePort service for frontend Nginx application"
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "false"
+    # 可选：负载均衡器注解
+    # service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+    # service.beta.kubernetes.io/azure-load-balancer-internal: "false"
 spec:
-  type: NodePort 
+  type: NodePort                 # 节点端口访问类型
   selector:
-    app: frontend-nginxapp
-  ports: 
-    - name: http
-      port: 80
-      targetPort: 80
-      nodePort: 31234
+    app: frontend-nginxapp       # 选择器必须匹配 Deployment 的 Pod 标签
+  ports:
+    - name: http               # 端口名称，便于引用
+      port: 80                 # Service 暴露的端口
+      targetPort: http         # 目标容器端口（可以是端口号或端口名称）
+      nodePort: 31234          # 节点端口（30000-32767 范围）
+      protocol: TCP            # 协议类型
+  # 会话亲和性（可选）
+  sessionAffinity: None        # None 或 ClientIP
+  # sessionAffinityConfig:     # 当 sessionAffinity 为 ClientIP 时配置
+  #   clientIP:
+  #     timeoutSeconds: 10800
+  
+  # 外部流量策略
+  externalTrafficPolicy: Cluster  # Cluster 或 Local
+  # Cluster: 流量可以转发到任何节点的 Pod（默认）
+  # Local: 流量只转发到接收流量节点上的 Pod
+  
+  # 发布就绪端点（可选）
+  publishNotReadyAddresses: false
+  
+  # 健康检查节点端口（当 externalTrafficPolicy 为 Local 时自动分配）
+  # healthCheckNodePort: 32000
+
+# ========================================
+# NodePort Service 特点
+# ========================================
+
+# 1. 外部访问：可以从集群外部通过节点 IP 和端口访问
+# 2. 端口范围：NodePort 端口范围为 30000-32767
+# 3. 负载均衡：在所有节点上开放相同端口
+# 4. 高可用性：任何节点故障不影响服务访问
+# 5. 防火墙：需要确保节点端口在防火墙中开放
+
+# ========================================
+# 访问方式
+# ========================================
+
+# 1. 通过任意节点 IP + NodePort 访问：
+#    http://<NODE-IP>:31234
+#    http://<NODE-IP>:31234/hello
+
+# 2. 通过 Service 名称访问（集群内部）：
+#    http://frontend-nginxapp-nodeport-service:80
+
+# 3. 获取节点 IP 地址：
+#    kubectl get nodes -o wide
+#    kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'
+
+# 4. 端口转发测试（开发调试）：
+#    kubectl port-forward svc/frontend-nginxapp-nodeport-service 8080:80
+#    http://localhost:8080
+
+# ========================================
+# 字段说明
+# ========================================
+
+# type: Service 类型
+#   - ClusterIP: 集群内部访问（默认）
+#   - NodePort: 节点端口访问
+#   - LoadBalancer: 负载均衡器访问
+#   - ExternalName: 外部名称映射
+
+# selector: Pod 选择器，匹配具有相应标签的 Pod
+# ports: 端口配置
+#   - name: 端口名称
+#   - port: Service 端口
+#   - targetPort: 容器端口
+#   - nodePort: 节点端口
+#   - protocol: 协议（TCP/UDP）
+
+# externalTrafficPolicy: 外部流量策略
+#   - Cluster: 流量分发到所有节点（默认）
+#   - Local: 流量只分发到本地节点
+
+# sessionAffinity: 会话亲和性
+#   - None: 无亲和性（默认）
+#   - ClientIP: 基于客户端 IP 的亲和性
+
+# ========================================
+# 网络通信流程
+# ========================================
+
+# 外部请求 → 节点端口(31234) → Service → Pod(80)
+# 1. 客户端访问任意节点的 31234 端口
+# 2. kube-proxy 将流量转发到 Service
+# 3. Service 负载均衡到后端 Pod 的 80 端口
+# 4. Pod 处理请求并返回响应
+
+# ========================================
+# 最佳实践
+# ========================================
+
+# 1. 选择合适的 NodePort 端口号
+# 2. 配置防火墙规则开放端口
+# 3. 使用有意义的服务名称
+# 4. 为端口指定名称
+# 5. 使用标签进行服务分类
+# 6. 添加适当的注解说明
+# 7. 考虑使用 LoadBalancer 类型（云环境）
+# 8. 监控服务健康状态
+
+# ========================================
+# 安全考虑
+# ========================================
+
+# 1. 限制 NodePort 端口范围
+# 2. 配置网络策略
+# 3. 使用 TLS 加密
+# 4. 实施访问控制
+# 5. 监控异常流量
+
+# ========================================
+# 故障排除
+# ========================================
+
+# 检查 Service 状态：
+# kubectl get svc frontend-nginxapp-nodeport-service
+# kubectl describe svc frontend-nginxapp-nodeport-service
+
+# 检查端点：
+# kubectl get endpoints frontend-nginxapp-nodeport-service
+
+# 检查节点端口：
+# kubectl get svc frontend-nginxapp-nodeport-service -o jsonpath='{.spec.ports[0].nodePort}'
+
+# 测试连接：
+# curl http://<NODE-IP>:31234
+# curl http://<NODE-IP>:31234/hello

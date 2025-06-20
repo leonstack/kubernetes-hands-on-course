@@ -1,21 +1,63 @@
-# 使用 kubectl 管理 POD
+# 2. PODs with kubectl
 
-## 目录
+## 2.0 目录
 
-- [步骤 01：POD 介绍](#步骤-01pod-介绍)
-- [步骤 02：POD 演示](#步骤-02pod-演示)
-- [步骤 03：NodePort Service 介绍](#步骤-03nodeport-service-介绍)
-- [步骤 04：演示 - 使用 Service 暴露 Pod](#步骤-04演示---使用-service-暴露-pod)
-- [步骤 05：与 Pod 交互](#步骤-05与-pod-交互)
-- [步骤 06：获取 Pod 和 Service 的 YAML 输出](#步骤-06获取-pod-和-service-的-yaml-输出)
-- [步骤 07：清理](#步骤-07清理)
-- [步骤 08：故障排查指南](#步骤-08故障排查指南)
-- [步骤 09：最佳实践](#步骤-09最佳实践)
-- [步骤 10：自动化演示脚本](#步骤-10自动化演示脚本)
+- [2. PODs with kubectl](#2-pods-with-kubectl)
+  - [2.0 目录](#20-目录)
+  - [2.1 POD 介绍](#21-pod-介绍)
+    - [2.1.1 什么是 POD？](#211-什么是-pod)
+    - [2.1.2 什么是多容器 POD？](#212-什么是多容器-pod)
+      - [1. Sidecar 模式](#1-sidecar-模式)
+      - [2. Ambassador 模式](#2-ambassador-模式)
+      - [3. Adapter 模式](#3-adapter-模式)
+    - [2.1.3 POD 的生命周期](#213-pod-的生命周期)
+  - [2.2 POD 演示](#22-pod-演示)
+    - [2.2.1 获取工作节点状态](#221-获取工作节点状态)
+    - [2.2.2 创建 Pod](#222-创建-pod)
+    - [2.2.3 列出 Pod](#223-列出-pod)
+    - [使用 wide 选项列出 Pod](#使用-wide-选项列出-pod)
+    - [后台发生了什么？](#后台发生了什么)
+    - [2.2.4 描述 Pod](#224-描述-pod)
+    - [访问应用程序](#访问应用程序)
+    - [删除 Pod](#删除-pod)
+  - [2.3 NodePort Service 介绍](#23-nodeport-service-介绍)
+  - [2.4 演示 - 使用 Service 暴露 Pod](#24-演示---使用-service-暴露-pod)
+  - [2.5 与 Pod 交互](#25-与-pod-交互)
+    - [验证 Pod 日志](#验证-pod-日志)
+    - [连接到 POD 中的容器](#连接到-pod-中的容器)
+  - [2.6 获取 Pod 和 Service 的 YAML 输出](#26-获取-pod-和-service-的-yaml-输出)
+    - [获取 YAML 输出](#获取-yaml-输出)
+  - [2.7 清理](#27-清理)
+  - [2.8 故障排查指南](#28-故障排查指南)
+    - [常见问题及解决方案](#常见问题及解决方案)
+      - [1. Pod 状态为 Pending](#1-pod-状态为-pending)
+      - [2. Pod 状态为 CrashLoopBackOff](#2-pod-状态为-crashloopbackoff)
+      - [3. 无法访问应用程序](#3-无法访问应用程序)
+    - [调试工具和技巧](#调试工具和技巧)
+      - [1. 使用临时调试容器](#1-使用临时调试容器)
+      - [2. 网络调试](#2-网络调试)
+      - [3. 资源监控](#3-资源监控)
+  - [2.9 最佳实践](#29-最佳实践)
+    - [2.9.1 资源管理](#291-资源管理)
+      - [设置资源请求和限制](#设置资源请求和限制)
+    - [2.9.2 健康检查](#292-健康检查)
+      - [配置存活性和就绪性探针](#配置存活性和就绪性探针)
+    - [2.9.3 安全配置](#293-安全配置)
+      - [使用非 root 用户](#使用非-root-用户)
+    - [2.9.4 标签和注解](#294-标签和注解)
+      - [使用有意义的标签](#使用有意义的标签)
+    - [2.9.5 环境变量管理](#295-环境变量管理)
+      - [使用 ConfigMap 和 Secret](#使用-configmap-和-secret)
+  - [2.10 自动化演示脚本](#210-自动化演示脚本)
+    - [2.10.1 使用方法](#2101-使用方法)
+    - [2.10.2 脚本功能](#2102-脚本功能)
+    - [2.10.3 脚本注意事项](#2103-脚本注意事项)
+    - [2.10.4 总结](#2104-总结)
+  - [参考资源](#参考资源)
 
-## 步骤 01：POD 介绍
+## 2.1 POD 介绍
 
-### 什么是 POD？
+### 2.1.1 什么是 POD？
 
 POD 是 Kubernetes 中最小的可部署单元，它具有以下特征：
 
@@ -24,7 +66,7 @@ POD 是 Kubernetes 中最小的可部署单元，它具有以下特征：
 - **生命周期管理**：Pod 中的所有容器作为一个整体进行调度、启动和停止
 - **原子性**：Pod 要么全部运行，要么全部停止
 
-### 什么是多容器 POD？
+### 2.1.2 什么是多容器 POD？
 
 多容器 Pod 是指在一个 Pod 中运行多个容器的模式，常见的使用场景包括：
 
@@ -51,7 +93,7 @@ POD 是 Kubernetes 中最小的可部署单元，它具有以下特征：
 - 主容器：应用程序
 - Adapter 容器：数据格式转换
 
-### POD 的生命周期
+### 2.1.3 POD 的生命周期
 
 ```text
 Pending → Running → Succeeded/Failed
@@ -67,9 +109,9 @@ Pending → Running → Succeeded/Failed
 - **Failed**：Pod 中的所有容器都已终止，至少一个容器以失败状态终止
 - **Unknown**：无法获取 Pod 状态
 
-## 步骤 02：POD 演示
+## 2.2 POD 演示
 
-### 获取工作节点状态
+### 2.2.1 获取工作节点状态
 
 - 验证 Kubernetes 工作节点是否就绪。
 
@@ -81,7 +123,7 @@ kubectl get nodes
 kubectl get nodes -o wide
 ```
 
-### 创建 Pod
+### 2.2.2 创建 Pod
 
 - 创建一个 Pod
 
@@ -102,7 +144,7 @@ kubectl run my-first-pod --image grissomsh/kubenginx:1.0.0 --generator=run-pod/v
 kubectl run my-first-pod --image grissomsh/kubenginx:1.0.0
 ```  
 
-### 列出 Pod
+### 2.2.3 列出 Pod
 
 - 获取 Pod 列表
 
@@ -129,7 +171,7 @@ kubectl get pods -o wide
   3. 在 Pod 中创建了容器
   4. 启动了 Pod 中的容器
 
-### 描述 Pod
+### 2.2.4 描述 Pod
 
 - 描述 POD，主要在故障排除时需要。
 - 显示的事件在故障排除时会有很大帮助。
@@ -160,13 +202,13 @@ kubectl delete pod <Pod-Name>
 kubectl delete pod my-first-pod
 ```
 
-## 步骤 03：NodePort Service 介绍
+## 2.3 NodePort Service 介绍
 
 - 什么是 Kubernetes 中的 Service？
 - 什么是 NodePort Service？
 - 它是如何工作的？
 
-## 步骤 04：演示 - 使用 Service 暴露 Pod
+## 2.4 演示 - 使用 Service 暴露 Pod
 
 - 使用 Service（NodePort Service）暴露 Pod 以从外部（互联网）访问应用程序
 - **端口**
@@ -221,7 +263,7 @@ kubectl get nodes -o wide
 http://<node1-public-ip>:<Node-Port>
 ```
 
-## 步骤 05：与 Pod 交互
+## 2.5 与 Pod 交互
 
 ### 验证 Pod 日志
 
@@ -276,7 +318,7 @@ kubectl exec -it my-first-pod cat /usr/share/nginx/html/index.html
 
 ```
 
-## 步骤 06：获取 Pod 和 Service 的 YAML 输出
+## 2.6 获取 Pod 和 Service 的 YAML 输出
 
 ### 获取 YAML 输出
 
@@ -288,7 +330,7 @@ kubectl get pod my-first-pod -o yaml
 kubectl get service my-first-service -o yaml
 ```
 
-## 步骤 07：清理
+## 2.7 清理
 
 ```bash
 # 获取默认命名空间中的所有对象
@@ -306,7 +348,7 @@ kubectl delete pod my-first-pod
 kubectl get all
 ```
 
-## 步骤 08：故障排查指南
+## 2.8 故障排查指南
 
 ### 常见问题及解决方案
 
@@ -407,9 +449,9 @@ kubectl top nodes
 kubectl describe pod <pod-name> | grep -A 5 "Limits\|Requests"
 ```
 
-## 步骤 09：最佳实践
+## 2.9 最佳实践
 
-### 1. 资源管理
+### 2.9.1 资源管理
 
 #### 设置资源请求和限制
 
@@ -431,7 +473,7 @@ spec:
         cpu: "500m"
 ```
 
-### 2. 健康检查
+### 2.9.2 健康检查
 
 #### 配置存活性和就绪性探针
 
@@ -458,7 +500,7 @@ spec:
       periodSeconds: 5
 ```
 
-### 3. 安全配置
+### 2.9.3 安全配置
 
 #### 使用非 root 用户
 
@@ -483,7 +525,7 @@ spec:
         - ALL
 ```
 
-### 4. 标签和注解
+### 2.9.4 标签和注解
 
 #### 使用有意义的标签
 
@@ -506,7 +548,7 @@ spec:
     image: nginx:1.20
 ```
 
-### 5. 环境变量管理
+### 2.9.5 环境变量管理
 
 #### 使用 ConfigMap 和 Secret
 
@@ -540,11 +582,11 @@ spec:
           key: password
 ```
 
-## 步骤 10：自动化演示脚本
+## 2.10 自动化演示脚本
 
 为了方便演示和学习，我们提供了自动化脚本来执行本教程中的所有步骤。
 
-### 使用方法
+### 2.10.1 使用方法
 
 ```bash
 # 运行完整演示
@@ -560,7 +602,7 @@ spec:
 ./pod-demo.sh --help
 ```
 
-### 脚本功能
+### 2.10.2 脚本功能
 
 - ✅ 自动检查 Kubernetes 集群状态
 - ✅ 逐步演示 Pod 创建和管理
@@ -572,6 +614,22 @@ spec:
 
 ---
 
+### 2.10.3 脚本注意事项
+
+- **前提条件**：确保已安装 kubectl 命令行工具和配置好 Kubernetes 集群
+- **脚本执行**：
+  - 在脚本所在目录执行
+  - 确保脚本有执行权限（`chmod +x pod-demo.sh`）
+- **清理资源**：
+  - 执行 `--cleanup` 选项以清理创建的资源
+  - 手动删除 Pod、Service 等资源
+
+### 2.10.4 总结
+
+本脚本提供了一个交互式的环境，用于演示 Kubernetes Pod 的创建、管理和操作。通过逐步执行脚本，您可以了解 Pod 的生命周期、资源配置、健康检查和与容器的交互等方面。
+
+---
+
 ## 参考资源
 
 - [Kubernetes 官方文档 - Pods](https://kubernetes.io/docs/concepts/workloads/pods/)
@@ -579,10 +637,4 @@ spec:
 - [Pod 生命周期](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/)
 - [多容器 Pod 模式](https://kubernetes.io/blog/2015/06/the-distributed-system-toolkit-patterns/)
 
-## 贡献
-
-欢迎提交 Issue 和 Pull Request 来改进本教程！
-
-## 许可证
-
-本项目采用 MIT 许可证。
+---

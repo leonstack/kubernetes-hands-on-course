@@ -1,7 +1,9 @@
 #!/bin/bash
 
 # ReplicaSet kubectl 管理演示脚本
-# 基于 README.md 文档生成的完整演示
+# 作者: Grissom
+# 版本: 1.0.0
+# 日期: 2025-06-20
 
 set -e  # 遇到错误时退出
 

@@ -1,15 +1,113 @@
+# 后端 ClusterIP Service 配置
+# 为后端 Deployment 提供集群内部访问服务
+
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-backend-service ## VERY VERY IMPORTANT - NGINX PROXYPASS needs this name
-  labels: 
+  name: backend-restapp-clusterip-service
+  labels:
     app: backend-restapp
     tier: backend
+    version: v1.0.0
+    component: api
+    service-type: clusterip
+  annotations:
+    description: "ClusterIP service for backend REST API"
+    service.alpha.kubernetes.io/tolerate-unready-endpoints: "false"
+    # 可选：服务网格注解
+    # service.istio.io/canonical-name: "backend-restapp"
+    # service.istio.io/canonical-revision: "v1.0.0"
 spec:
-  #type: Cluster IP is a default service
+  type: ClusterIP                # 集群内部访问类型
+  # clusterIP: None              # 可设置为 None 创建 Headless Service
   selector:
-    app: backend-restapp
-  ports: 
-    - name: http
-      port: 8080 # ClusterIp Service Port
-      targetPort: 8080 # Container Port
+    app: backend-restapp         # 选择器必须匹配 Deployment 的 Pod 标签
+  ports:
+    - name: http               # 端口名称，便于引用
+      port: 8080               # Service 暴露的端口
+      targetPort: http         # 目标容器端口（可以是端口号或端口名称）
+      protocol: TCP            # 协议类型
+  # 会话亲和性（可选）
+  sessionAffinity: None        # None 或 ClientIP
+  # sessionAffinityConfig:     # 当 sessionAffinity 为 ClientIP 时配置
+  #   clientIP:
+  #     timeoutSeconds: 10800
+  
+  # 发布就绪端点（可选）
+  publishNotReadyAddresses: false
+  
+  # 外部流量策略（对 ClusterIP 无效，但保留用于参考）
+  # externalTrafficPolicy: Cluster
+
+# ========================================
+# ClusterIP Service 特点
+# ========================================
+
+# 1. 集群内部访问：只能从集群内部访问
+# 2. 虚拟 IP：分配一个集群内部的虚拟 IP 地址
+# 3. DNS 解析：可通过服务名进行 DNS 解析
+# 4. 负载均衡：自动在后端 Pod 之间进行负载均衡
+# 5. 服务发现：支持环境变量和 DNS 两种服务发现方式
+
+# ========================================
+# 访问方式
+# ========================================
+
+# 1. 通过 Service 名称访问（推荐）：
+#    http://backend-restapp-clusterip-service:8080/hello
+#    http://backend-restapp-clusterip-service.default.svc.cluster.local:8080/hello
+
+# 2. 通过 ClusterIP 访问：
+#    kubectl get svc backend-restapp-clusterip-service
+#    http://<CLUSTER-IP>:8080/hello
+
+# 3. 端口转发测试（开发调试）：
+#    kubectl port-forward svc/backend-restapp-clusterip-service 8080:8080
+#    http://localhost:8080/hello
+
+# ========================================
+# 字段说明
+# ========================================
+
+# type: Service 类型
+#   - ClusterIP: 集群内部访问（默认）
+#   - NodePort: 节点端口访问
+#   - LoadBalancer: 负载均衡器访问
+#   - ExternalName: 外部名称映射
+
+# selector: Pod 选择器，匹配具有相应标签的 Pod
+# ports: 端口配置
+#   - name: 端口名称
+#   - port: Service 端口
+#   - targetPort: 容器端口
+#   - protocol: 协议（TCP/UDP）
+
+# sessionAffinity: 会话亲和性
+#   - None: 无亲和性（默认）
+#   - ClientIP: 基于客户端 IP 的亲和性
+
+# ========================================
+# 最佳实践
+# ========================================
+
+# 1. 使用有意义的服务名称
+# 2. 为端口指定名称
+# 3. 使用标签进行服务分类
+# 4. 添加适当的注解说明
+# 5. 确保选择器与 Pod 标签匹配
+# 6. 考虑使用 Headless Service 进行服务发现
+
+# ========================================
+# 故障排除
+# ========================================
+
+# 检查 Service 状态：
+# kubectl get svc backend-restapp-clusterip-service
+# kubectl describe svc backend-restapp-clusterip-service
+
+# 检查端点：
+# kubectl get endpoints backend-restapp-clusterip-service
+
+# 测试连接：
+# kubectl run test-pod --image=busybox --rm -it -- /bin/sh
+# wget -qO- http://backend-restapp-clusterip-service:8080/hello

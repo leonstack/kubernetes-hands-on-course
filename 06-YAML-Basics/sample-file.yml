@@ -1,35 +1,265 @@
 # Simple Key value Pairs
+# YAML 基础示例文件
+# 演示各种 YAML 数据结构和语法
+
+# 1. 简单键值对
+name: kalyan
+age: 23
+city: Hyderabad # 修正拼写错误
+country: India
+
+# 2. 字典/映射结构
 person: # Dictionary
   name: kalyan
   age: 23
-  city: Hyderabd
+  city: Hyderabad
+  email: kalyan@example.com
+  is_student: true
+
+  # 嵌套字典
+  address:
+    street: "123 Main Street"
+    postal_code: "500001"
+    country: "India"
+
+  # 列表
   hobbies: # List
     - cooking
     - cycling
+    - reading
+    - photography
+
+  # 内联列表语法
+  skills: ["Python", "JavaScript", "Docker", "Kubernetes"]
+
+  # 复杂列表 - 列表中包含字典
   friends: # Multiple lists
     - name: friend1
       age: 23
+      city: Mumbai
+      contact:
+        email: friend1@example.com
+        phone: "+91-9876543210"
     - name: friend2
       age: 22
---- # YAML Document Separator
-apiVersion: v1 # String
-kind: Pod  # String
-metadata: # Dictionary
+      city: Delhi
+      contact:
+        email: friend2@example.com
+        phone: "+91-9876543211"
+
+  # 教育背景
+  education:
+    - degree: "Bachelor's"
+      field: "Computer Science"
+      university: "Tech University"
+      year: 2020
+      gpa: 8.5
+    - degree: "Master's"
+      field: "Software Engineering"
+      university: "Advanced Tech Institute"
+      year: 2022
+      gpa: 9.0
+
+# 3. 多行字符串示例
+description: |
+  这是一个多行字符串示例。
+  每一行都会保留换行符。
+  适用于配置文件或长文本。
+
+summary: >
+  这是另一种多行字符串格式，
+  所有换行符会被替换为空格，
+  形成一个连续的字符串。
+
+# 4. 特殊值
+null_value: null
+empty_value: ~
+boolean_true: true
+boolean_false: false
+number_int: 42
+number_float: 3.14159
+scientific_notation: 1.23e+10
+--- # YAML Document Separator - 分隔多个 YAML 文档
+
+# 5. Kubernetes Pod 配置示例
+apiVersion: v1 # String - API 版本
+kind: Pod # String - 资源类型
+metadata: # Dictionary - 元数据
   name: myapp-pod
-  labels: # Dictionary 
-    app: myapp    
-    tier: frontend     
-spec:
-  containers: # List
+  namespace: default
+  labels: # Dictionary - 标签
+    app: myapp
+    tier: frontend
+    version: v1.0
+    environment: production
+  annotations: # Dictionary - 注解
+    description: "示例应用 Pod"
+    maintainer: "devops-team@company.com"
+    created-by: "yaml-tutorial"
+spec: # Dictionary - Pod 规格
+  restartPolicy: Always
+  containers: # List - 容器列表
     - name: myapp
       image: grissomsh/kubenginx:1.0.0
-      ports: # List
+      imagePullPolicy: IfNotPresent
+      ports: # List - 端口配置
         - containerPort: 80
           protocol: "TCP"
+          name: "http"
         - containerPort: 81
-          protocol: "TCP"  
+          protocol: "TCP"
+          name: "admin"
+      env: # List - 环境变量
+        - name: "APP_ENV"
+          value: "production"
+        - name: "LOG_LEVEL"
+          value: "info"
+        - name: "PORT"
+          value: "80"
+      resources: # Dictionary - 资源限制
+        requests:
+          memory: "64Mi"
+          cpu: "250m"
+        limits:
+          memory: "128Mi"
+          cpu: "500m"
+      livenessProbe: # Dictionary - 存活探针
+        httpGet:
+          path: /health
+          port: 80
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        failureThreshold: 3
+      readinessProbe: # Dictionary - 就绪探针
+        httpGet:
+          path: /ready
+          port: 80
+        initialDelaySeconds: 5
+        periodSeconds: 5
+        timeoutSeconds: 3
+        failureThreshold: 3
 
+--- # 第二个文档分隔符
 
-                     
+# 6. Kubernetes Service 配置示例
+apiVersion: v1
+kind: Service
+metadata:
+  name: myapp-service
+  labels:
+    app: myapp
+    tier: frontend
+spec:
+  type: ClusterIP
+  selector: # Dictionary - 选择器
+    app: myapp
+  ports: # List - 端口映射
+    - name: http
+      port: 80
+      targetPort: 80
+      protocol: TCP
+    - name: admin
+      port: 8080
+      targetPort: 81
+      protocol: TCP
 
-  
+--- # 第三个文档分隔符
+
+# 7. Kubernetes Deployment 配置示例
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: myapp-deployment
+  labels:
+    app: myapp
+    tier: frontend
+spec:
+  replicas: 3 # Number - 副本数量
+  strategy: # Dictionary - 部署策略
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels: # Dictionary - 标签选择器
+      app: myapp
+  template: # Dictionary - Pod 模板
+    metadata:
+      labels:
+        app: myapp
+        tier: frontend
+    spec:
+      containers:
+        - name: myapp
+          image: grissomsh/kubenginx:1.0.0
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: APP_ENV
+              value: production
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 80
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+
+--- # 第四个文档分隔符
+
+# 8. 高级 YAML 特性示例
+
+# 锚点定义
+defaults: &default-config
+  replicas: 3
+  image: nginx:1.21
+  resources:
+    requests:
+      memory: "64Mi"
+      cpu: "250m"
+    limits:
+      memory: "128Mi"
+      cpu: "500m"
+
+# 使用锚点引用
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+spec:
+  <<: *default-config # 引用锚点
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          # 添加资源限制以避免资源争用问题
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi" 
+              cpu: "500m"
+          image: nginx:1.21
+          ports:
+            - containerPort: 80

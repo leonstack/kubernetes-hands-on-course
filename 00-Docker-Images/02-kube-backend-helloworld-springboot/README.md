@@ -1,10 +1,10 @@
-# Spring Boot Hello World - Kubernetes 后端服务
+# 2. Spring Boot Hello World - Kubernetes 后端服务
 
-## 📋 项目概述
+## 1. 📋 项目概述
 
 这是一个基于 Spring Boot 的简单 Hello World REST API 服务，专为 Kubernetes 环境设计。该项目演示了如何构建、容器化和部署一个生产就绪的 Spring Boot 应用程序。
 
-### 🎯 主要特性
+### 1.1 🎯 主要特性
 
 - **RESTful API**：提供简单的 Hello World 端点
 - **服务器信息**：返回容器主机名信息，便于负载均衡测试
@@ -13,7 +13,7 @@
 - **健康检查**：内置健康检查端点
 - **Kubernetes 就绪**：适配 Kubernetes 环境的配置
 
-## 🏗️ 项目结构
+## 2. 🏗️ 项目结构
 
 ```text
 kube-helloworld/
@@ -34,24 +34,24 @@ kube-helloworld/
 └── README.md                                   # 项目文档
 ```
 
-## 🚀 快速开始
+## 3. 🚀 快速开始
 
-### 前置条件
+### 3.1 前置条件
 
 - Java 8 或更高版本
 - Maven 3.6+
 - Docker（用于容器化）
 - Kubernetes 集群（用于部署）
 
-### 本地开发
+### 3.2 本地开发
 
-#### 1. 克隆项目
+#### 3.2.1 克隆项目
 
 ```bash
 cd /Users/wangtianqing/Project/kubernetes-fundamentals/00-Docker-Images/02-kube-backend-helloworld-springboot/kube-helloworld
 ```
 
-#### 2. 编译和运行
+#### 3.2.2 编译和运行
 
 ```bash
 # 编译项目
@@ -70,7 +70,7 @@ java -jar target/hello-world-rest-api.jar
 mvn spring-boot:run
 ```
 
-#### 3. 测试 API
+#### 3.2.3 测试 API
 
 ```bash
 # 测试 Hello World 端点
@@ -80,13 +80,13 @@ curl http://localhost:8080/hello
 # Hello World V1 LOCAL
 ```
 
-## 🐳 Docker 容器化
+## 4. 🐳 Docker 容器化
 
-### 多阶段构建架构
+### 4.1 多阶段构建架构
 
 本项目采用多阶段构建 Dockerfile，相比单阶段构建具有显著优势。多阶段构建将应用的编译和运行分离，大幅减少最终镜像大小，提高安全性和部署效率。
 
-#### 阶段1: 构建阶段 (builder)
+#### 4.1.1 阶段1: 构建阶段 (builder)
 
 ```dockerfile
 FROM maven:3.8.6-openjdk-8-alpine AS builder
@@ -106,7 +106,7 @@ FROM maven:3.8.6-openjdk-8-alpine AS builder
 - **离线构建**：使用 `mvn dependency:go-offline` 预下载依赖
 - **构建验证**：验证构建产物的存在性
 
-#### 阶段2: 运行阶段 (runtime)
+#### 4.1.2 阶段2: 运行阶段 (runtime)
 
 ```dockerfile
 FROM eclipse-temurin:8-jre-alpine AS runtime
@@ -119,7 +119,7 @@ FROM eclipse-temurin:8-jre-alpine AS runtime
 - 设置健康检查和监控
 - 优化 JVM 参数
 
-### 完整 Dockerfile 分析
+### 4.2 完整 Dockerfile 分析
 
 我们的多阶段 Dockerfile 采用了多项最佳实践：
 
@@ -209,9 +209,9 @@ ENTRYPOINT ["java", \
     "-jar", "app.jar"]
 ```
 
-### 📊 多阶段构建优势对比
+### 4.3 📊 多阶段构建优势对比
 
-#### 镜像大小对比
+#### 4.3.1 镜像大小对比
 
 | 构建方式 | 镜像大小 | 说明 |
 |----------|----------|------|
@@ -219,7 +219,7 @@ ENTRYPOINT ["java", \
 | 多阶段构建 | ~120MB | 仅包含 JRE + 应用 JAR |
 | **减少** | **~40%** | **显著减少存储和传输成本** |
 
-#### 安全性提升
+#### 4.3.2 安全性提升
 
 | 方面 | 单阶段 | 多阶段 | 改进 |
 |------|--------|--------|------|
@@ -227,7 +227,7 @@ ENTRYPOINT ["java", \
 | 敏感信息 | 可能包含源码 | 仅包含编译产物 | ✅ 避免源码泄露 |
 | 工具链 | 包含 Maven/JDK | 仅包含 JRE | ✅ 减少可利用工具 |
 
-#### 构建效率
+#### 4.3.3 构建效率
 
 | 特性 | 说明 | 优势 |
 |------|------|------|
@@ -235,23 +235,23 @@ ENTRYPOINT ["java", \
 | 并行构建 | 可并行构建多个阶段 | 🚀 提高 CI/CD 效率 |
 | 增量构建 | 智能缓存机制 | 🚀 减少重复构建时间 |
 
-### 🔒 安全特性
+### 4.4 🔒 安全特性
 
 - **非 root 用户**：使用 `appuser` 用户运行应用
 - **最小权限**：只授予必要的文件权限
 - **安全基础镜像**：使用 Eclipse Temurin 官方镜像
 - **JVM 安全**：配置安全的随机数生成器
 
-### ⚡ 性能优化
+### 4.5 ⚡ 性能优化
 
 - **容器感知**：`-XX:+UseContainerSupport` 让 JVM 感知容器环境
 - **内存管理**：`-XX:MaxRAMPercentage=75.0` 限制内存使用
 - **垃圾收集**：使用 G1GC 和字符串去重优化
 - **启动优化**：配置快速启动参数
 
-### 构建和运行 Docker 镜像
+### 4.6 构建和运行 Docker 镜像
 
-#### 基本构建（多阶段）
+#### 4.6.1 基本构建（多阶段）
 
 ```bash
 # 构建多阶段镜像（无需预先编译）
@@ -274,7 +274,7 @@ docker stop hello-app
 docker rm hello-app
 ```
 
-#### 构建特定阶段（调试用）
+#### 4.6.2 构建特定阶段（调试用）
 
 ```bash
 # 只构建到 builder 阶段（用于调试构建问题）
@@ -285,7 +285,7 @@ docker run -it kube-helloworld:builder /bin/sh
 ls -la /build/target/
 ```
 
-#### 使用构建参数
+#### 4.6.3 使用构建参数
 
 ```bash
 # 启用测试的构建

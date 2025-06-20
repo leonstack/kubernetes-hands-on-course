@@ -1,0 +1,466 @@
+# YAML 基础练习题答案
+# 这是 practice-exercises.yml 的参考答案
+
+# ==========================================
+# 练习 1: 修正语法错误 - 答案
+# ==========================================
+
+# 修正后的正确版本:
+apiVersion: v1
+kind: Pod
+metadata:
+  name: practice-pod
+  labels:              # 修正：正确的缩进
+    app: myapp         # 修正：冒号后添加空格
+    version: v1.0      # 修正：正确的缩进
+spec:
+  containers:          # 修正：列表的正确缩进
+    - name: web        # 修正：列表项的正确缩进
+      image: nginx:1.21
+      ports:
+        - containerPort: 80
+          protocol: TCP
+
+---  # 文档分隔符
+
+# ==========================================
+# 练习 2: 完成配置 - 答案
+# ==========================================
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: practice-service
+  labels:              # 添加标签
+    app: practice
+spec:
+  type: ClusterIP      # 设置服务类型
+  selector:            # 添加选择器
+    app: practice
+  ports:               # 添加端口配置
+    - name: http
+      port: 80
+      targetPort: 8080
+      protocol: TCP
+
+---  # 文档分隔符
+
+# ==========================================
+# 练习 3: 创建复杂结构 - 答案
+# ==========================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: practice-deployment
+  labels:
+    app: practice
+    tier: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: practice
+  template:
+    metadata:
+      labels:
+        app: practice
+        tier: frontend
+    spec:
+      containers:
+        - name: web
+          image: nginx:1.21
+          ports:
+            - containerPort: 8080
+          env:
+            - name: ENV
+              value: "production"
+            - name: DEBUG
+              value: "false"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+
+---  # 文档分隔符
+
+# ==========================================
+# 练习 4: 数据类型练习 - 答案
+# ==========================================
+
+person:
+  name: "张三"          # 字符串
+  age: 28              # 数字
+  is_married: true     # 布尔值
+  spouse: null         # 空值
+  hobbies:             # 列表
+    - 阅读
+    - 游泳
+    - 编程
+  contact:             # 嵌套字典
+    email: "zhangsan@example.com"
+    phone: "+86-13800138000"
+    address:
+      city: "北京"
+      postal_code: "100000"
+  work_experience:     # 列表，每项包含字典
+    - company: "ABC科技"
+      position: "软件工程师"
+      years: "2020-2022"
+    - company: "XYZ公司"
+      position: "高级工程师"
+      years: "2022-至今"
+
+---  # 文档分隔符
+
+# ==========================================
+# 练习 5: 多行字符串 - 答案
+# ==========================================
+
+config:
+  server_config: |     # 保留换行符
+    第一行配置
+    第二行配置
+    第三行配置
+  
+  description: >       # 折叠换行符
+    这是一个很长的描述文本，
+    它会被折叠成一行，
+    所有换行符都会变成空格。
+
+---  # 文档分隔符
+
+# ==========================================
+# 练习 6: 高级特性 - 答案
+# ==========================================
+
+# 定义锚点
+common_labels: &common-labels
+  app: practice
+  version: v1.0
+  environment: production
+
+# 使用锚点引用的 Pod 配置
+apiVersion: v1
+kind: Pod
+metadata:
+  name: practice-pod-1
+  labels:
+    <<: *common-labels  # 引用公共标签
+    component: frontend # 额外标签
+spec:
+  containers:
+    - name: frontend
+      image: nginx:1.21
+      ports:
+        - containerPort: 80
+
+---  # 文档分隔符
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: practice-pod-2
+  labels:
+    <<: *common-labels  # 引用公共标签
+    component: backend  # 额外标签
+spec:
+  containers:
+    - name: backend
+      image: nginx:1.21
+      ports:
+        - containerPort: 8080
+
+---  # 文档分隔符
+
+# ==========================================
+# 扩展练习答案: 完整微服务应用
+# ==========================================
+
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microservice-demo
+  labels:
+    name: microservice-demo
+    environment: development
+
+---
+
+# ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: microservice-demo
+  labels:
+    app: microservice
+data:
+  app.properties: |
+    server.port=8080
+    logging.level.root=INFO
+    database.url=jdbc:mysql://db:3306/appdb
+  nginx.conf: |
+    server {
+        listen 80;
+        location / {
+            proxy_pass http://backend:8080;
+        }
+    }
+
+---
+
+# Secret (示例，不包含真实密码)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: app-secrets
+  namespace: microservice-demo
+  labels:
+    app: microservice
+type: Opaque
+data:
+  # 注意：这些是 base64 编码的示例值
+  database-username: YWRtaW4=     # admin
+  database-password: cGFzc3dvcmQ= # password
+  api-key: YWJjZGVmZ2hpams=       # abcdefghijk
+
+---
+
+# Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  namespace: microservice-demo
+  labels:
+    app: microservice
+    component: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: microservice
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: microservice
+        component: backend
+    spec:
+      containers:
+        - name: backend
+          image: openjdk:11-jre-slim
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SERVER_PORT
+              value: "8080"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-username
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: database-password
+          volumeMounts:
+            - name: config-volume
+              mountPath: /app/config
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: config-volume
+          configMap:
+            name: app-config
+
+---
+
+# Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: microservice-demo
+  labels:
+    app: microservice
+    component: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: microservice
+    component: backend
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+---
+
+# Frontend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend-deployment
+  namespace: microservice-demo
+  labels:
+    app: microservice
+    component: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: microservice
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: microservice
+        component: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: nginx:1.21
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: app-config
+            items:
+              - key: nginx.conf
+                path: default.conf
+
+---
+
+# Frontend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: microservice-demo
+  labels:
+    app: microservice
+    component: frontend
+spec:
+  type: NodePort
+  selector:
+    app: microservice
+    component: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: 30080
+      protocol: TCP
+
+---
+
+# ==========================================
+# 验证和测试命令
+# ==========================================
+
+# 1. 验证 YAML 语法:
+#    python3 -c "import yaml; print('YAML 语法正确' if yaml.safe_load(open('practice-answers.yml')) else 'YAML 语法错误')"
+
+# 2. 验证 Kubernetes 资源:
+#    kubectl apply --dry-run=client -f practice-answers.yml
+
+# 3. 部署到集群 (可选):
+#    kubectl apply -f practice-answers.yml
+
+# 4. 查看部署状态:
+#    kubectl get all -n microservice-demo
+
+# 5. 清理资源:
+#    kubectl delete namespace microservice-demo
+
+# ==========================================
+# 学习要点总结
+# ==========================================
+
+# 通过这些练习，您应该掌握了：
+
+# 1. YAML 基础语法:
+#    - 缩进规则 (2个空格)
+#    - 冒号后空格
+#    - 列表和字典语法
+
+# 2. 数据类型:
+#    - 字符串、数字、布尔值、空值
+#    - 列表和字典的嵌套
+#    - 多行字符串的不同格式
+
+# 3. Kubernetes 资源:
+#    - Pod、Service、Deployment 配置
+#    - ConfigMap 和 Secret 的使用
+#    - 资源限制和健康检查
+
+# 4. 高级特性:
+#    - 锚点和引用
+#    - 文档分隔符
+#    - 复杂的嵌套结构
+
+# 5. 最佳实践:
+#    - 安全的敏感信息处理
+#    - 合理的资源配置
+#    - 清晰的标签和注释
+
+# 继续学习建议:
+# - 深入学习 Kubernetes 的其他资源类型
+# - 学习 Helm Charts 和 Kustomize
+# - 实践 GitOps 工作流
+# - 了解 YAML 在 CI/CD 中的应用

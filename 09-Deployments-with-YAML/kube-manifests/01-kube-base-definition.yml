@@ -1,6 +1,58 @@
-apiVersion:
-kind:
+# Kubernetes YAML 基础模板
+# 这个文件展示了 Kubernetes 资源定义的基本结构
+
+# API 版本 - 指定使用的 Kubernetes API 版本
+apiVersion: apps/v1  # 对于 Deployment 使用 apps/v1
+
+# 资源类型 - 指定要创建的 Kubernetes 对象类型
+kind: Deployment     # 可以是 Pod, ReplicaSet, Deployment, Service 等
+
+# 元数据 - 包含资源的基本信息
 metadata:
-  
+  name: resource-name           # 资源名称（必需）
+  namespace: default            # 命名空间（可选，默认为 default）
+  labels:                       # 标签（可选）
+    app: myapp
+    version: v1.0
+    tier: frontend
+  annotations:                  # 注解（可选）
+    description: "示例资源描述"
+    maintainer: "devops-team@company.com"
+
+# 规格说明 - 定义资源的期望状态
 spec:
+  # 这里的内容根据不同的资源类型而变化
+  # 对于 Deployment:
+  replicas: 3                   # 副本数量
+  selector:                     # 选择器
+    matchLabels:
+      app: myapp
+  template:                     # Pod 模板
+    metadata:
+      labels:
+        app: myapp
+    spec:
+      containers:
+      - name: app-container
+        image: nginx:latest
+        ports:
+        - containerPort: 80
+
+---
+# 常见的 Kubernetes 对象类型:
+# - Pod: 最小的部署单元
+# - ReplicaSet: 管理 Pod 副本
+# - Deployment: 管理 ReplicaSet，提供滚动更新
+# - Service: 提供网络访问
+# - ConfigMap: 配置数据
+# - Secret: 敏感数据
+# - Ingress: HTTP/HTTPS 路由
+
+# 重要字段说明:
+# - apiVersion: 必需，指定 API 版本
+# - kind: 必需，指定资源类型
+# - metadata.name: 必需，资源名称
+# - spec: 必需，资源规格定义
+# - labels: 推荐，用于资源选择和组织
+# - annotations: 可选，用于存储额外信息
     

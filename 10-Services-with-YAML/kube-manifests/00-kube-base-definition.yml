@@ -1,5 +1,68 @@
-apiVersion: 
-kind: 
-metadata:
+# Kubernetes YAML 基础模板
+# 这是所有 Kubernetes 资源的基本结构模板
 
-spec:
+apiVersion: apps/v1  # API 版本，指定使用的 Kubernetes API 版本
+kind: Deployment     # 资源类型，如 Deployment, Service, Pod 等
+metadata:            # 元数据部分
+  name: resource-name              # 资源名称（必需）
+  namespace: default               # 命名空间（可选，默认为 default）
+  labels:                          # 标签（可选但推荐）
+    app: app-name
+    version: v1.0
+    tier: frontend
+  annotations:                     # 注解（可选）
+    description: "Resource description"
+    maintainer: "team@company.com"
+spec:                # 规格说明部分
+  # 这里定义资源的具体配置
+  # 不同类型的资源有不同的 spec 结构
+
+# ========================================
+# 常见的 Kubernetes 对象类型
+# ========================================
+
+# 1. Deployment - 应用部署
+# apiVersion: apps/v1
+# kind: Deployment
+
+# 2. Service - 服务暴露
+# apiVersion: v1
+# kind: Service
+
+# 3. Pod - 最小部署单元
+# apiVersion: v1
+# kind: Pod
+
+# 4. ConfigMap - 配置管理
+# apiVersion: v1
+# kind: ConfigMap
+
+# 5. Secret - 密钥管理
+# apiVersion: v1
+# kind: Secret
+
+# 6. Ingress - 入口控制器
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+
+# ========================================
+# 重要字段说明
+# ========================================
+
+# metadata.name: 资源的唯一标识符
+# metadata.labels: 用于资源选择和分组
+# metadata.annotations: 存储额外的元数据信息
+# spec: 定义资源的期望状态
+# status: 显示资源的当前状态（由系统维护）
+
+# ========================================
+# 标签最佳实践
+# ========================================
+
+# 推荐的标签：
+# app: 应用名称
+# version: 应用版本
+# component: 组件名称（frontend, backend, database）
+# tier: 层级（frontend, backend, cache）
+# environment: 环境（dev, staging, prod）
+# managed-by: 管理工具（kubectl, helm, kustomize）

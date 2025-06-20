@@ -1,13 +1,77 @@
-apiVersion: 
-kind: 
-metadata:
+# Kubernetes YAML 基础模板
+# 所有 Kubernetes 资源都遵循这个基本结构
 
-spec:
+apiVersion: # API 版本，指定使用的 Kubernetes API 版本
+            # 示例: v1, apps/v1, networking.k8s.io/v1
+            
+kind:       # 资源类型，定义要创建的 Kubernetes 对象类型
+            # 示例: Pod, Service, Deployment, ConfigMap
+            
+metadata:   # 元数据，包含资源的标识信息
+  name:     # 资源名称（必需，在命名空间内唯一）
+  namespace: # 命名空间（可选，默认为 default）
+  labels:   # 标签（可选，键值对，用于选择和分组）
+    key1: value1
+    key2: value2
+  annotations: # 注解（可选，用于存储额外的非标识信息）
+    key1: value1
+    key2: value2
     
-# Types of Kubernetes Objects
-# Pod, ReplicaSet, Deployment, Service and many more
+spec:       # 规格说明，定义资源的期望状态
+            # 内容根据资源类型而变化
+            
+# ==========================================
+# Kubernetes 对象类型示例
+# ==========================================
 
-# apiVersion: version of k8s objects
-# kind: k8s objects 
-# metadata: define name and labels for k8s objects
-# spec: specification or real definition for k8s objects
+# 工作负载资源
+# - Pod: 最小部署单元，包含一个或多个容器
+# - Deployment: 管理 Pod 的部署和更新
+# - ReplicaSet: 确保指定数量的 Pod 副本运行
+# - DaemonSet: 在每个节点上运行一个 Pod 副本
+# - StatefulSet: 管理有状态应用
+# - Job: 运行一次性任务
+# - CronJob: 定时任务
+
+# 服务发现和负载均衡
+# - Service: 为 Pod 提供稳定的网络访问
+# - Ingress: HTTP/HTTPS 路由规则
+# - EndpointSlice: 网络端点信息
+
+# 配置和存储
+# - ConfigMap: 非敏感配置数据
+# - Secret: 敏感信息（密码、令牌等）
+# - PersistentVolume: 持久化存储卷
+# - PersistentVolumeClaim: 存储卷声明
+# - StorageClass: 存储类定义
+
+# 集群管理
+# - Namespace: 命名空间，用于资源隔离
+# - ServiceAccount: 服务账户
+# - Role/ClusterRole: 角色定义
+# - RoleBinding/ClusterRoleBinding: 角色绑定
+# - NetworkPolicy: 网络策略
+
+# ==========================================
+# 字段说明
+# ==========================================
+
+# apiVersion: 指定 Kubernetes API 的版本
+#   - v1: 核心 API 组（Pod, Service, ConfigMap 等）
+#   - apps/v1: 应用 API 组（Deployment, ReplicaSet 等）
+#   - networking.k8s.io/v1: 网络 API 组（Ingress, NetworkPolicy 等）
+
+# kind: 定义要创建的 Kubernetes 对象类型
+#   - 必须与 apiVersion 兼容
+#   - 区分大小写
+
+# metadata: 资源的元数据信息
+#   - name: 资源名称，在命名空间内必须唯一
+#   - namespace: 命名空间，用于资源隔离
+#   - labels: 标签，用于资源选择和分组
+#   - annotations: 注解，存储额外的非标识信息
+
+# spec: 资源的规格说明
+#   - 定义资源的期望状态
+#   - 内容根据资源类型而变化
+#   - Kubernetes 控制器会确保实际状态与期望状态一致
