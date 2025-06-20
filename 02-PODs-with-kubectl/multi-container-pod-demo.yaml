@@ -1,0 +1,249 @@
+# 多容器 Pod 演示 - Sidecar 模式
+# 这个示例展示了一个包含主应用容器和日志收集 Sidecar 容器的 Pod
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: multi-container-demo
+  labels:
+    app: web-app
+    pattern: sidecar
+  annotations:
+    description: "演示多容器 Pod 的 Sidecar 模式"
+    pattern: "主容器运行 Nginx Web 服务器，Sidecar 容器收集和处理日志"
+spec:
+  # 共享卷定义
+  volumes:
+  - name: shared-logs
+    emptyDir: {}
+  - name: nginx-config
+    configMap:
+      name: nginx-config
+      optional: true
+  
+  containers:
+  # 主应用容器 - Nginx Web 服务器
+  - name: web-server
+    image: nginx:1.25-alpine
+    ports:
+    - containerPort: 80
+      name: http
+    
+    # 资源限制
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "100m"
+      limits:
+        memory: "128Mi"
+        cpu: "200m"
+    
+    # 健康检查
+    livenessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    
+    readinessProbe:
+      httpGet:
+        path: /
+        port: 80
+      initialDelaySeconds: 5
+      periodSeconds: 5
+    
+    # 挂载共享卷
+    volumeMounts:
+    - name: shared-logs
+      mountPath: /var/log/nginx
+    - name: nginx-config
+      mountPath: /etc/nginx/conf.d
+      readOnly: true
+    
+    # 环境变量
+    env:
+    - name: NGINX_PORT
+      value: "80"
+    - name: CONTAINER_ROLE
+      value: "web-server"
+  
+  # Sidecar 容器 - 日志收集器
+  - name: log-collector
+    image: busybox:1.35
+    
+    # 资源限制
+    resources:
+      requests:
+        memory: "32Mi"
+        cpu: "50m"
+      limits:
+        memory: "64Mi"
+        cpu: "100m"
+    
+    # 持续运行的命令 - 监控和处理日志
+    command:
+    - /bin/sh
+    - -c
+    - |
+      echo "日志收集器启动..."
+      
+      # 创建日志处理脚本
+      cat > /tmp/process_logs.sh << 'EOF'
+      #!/bin/sh
+      while true; do
+        # 检查访问日志
+        if [ -f /var/log/nginx/access.log ]; then
+          # 统计最近的访问次数
+          RECENT_REQUESTS=$(tail -n 100 /var/log/nginx/access.log 2>/dev/null | wc -l)
+          echo "[$(date)] 最近100条访问记录数: $RECENT_REQUESTS"
+          
+          # 提取IP地址统计
+          if [ $RECENT_REQUESTS -gt 0 ]; then
+            echo "[$(date)] 访问IP统计:"
+            tail -n 100 /var/log/nginx/access.log | awk '{print $1}' | sort | uniq -c | sort -nr | head -5
+          fi
+        fi
+        
+        # 检查错误日志
+        if [ -f /var/log/nginx/error.log ]; then
+          ERROR_COUNT=$(wc -l < /var/log/nginx/error.log 2>/dev/null || echo 0)
+          if [ $ERROR_COUNT -gt 0 ]; then
+            echo "[$(date)] 发现 $ERROR_COUNT 条错误日志"
+            tail -n 5 /var/log/nginx/error.log
+          fi
+        fi
+        
+        # 每30秒检查一次
+        sleep 30
+      done
+      EOF
+      
+      chmod +x /tmp/process_logs.sh
+      exec /tmp/process_logs.sh
+    
+    # 挂载共享日志卷
+    volumeMounts:
+    - name: shared-logs
+      mountPath: /var/log/nginx
+      readOnly: true
+    
+    # 环境变量
+    env:
+    - name: CONTAINER_ROLE
+      value: "log-collector"
+    - name: LOG_LEVEL
+      value: "INFO"
+  
+  # 第三个容器 - 监控代理（可选）
+  - name: monitoring-agent
+    image: busybox:1.35
+    
+    # 资源限制
+    resources:
+      requests:
+        memory: "16Mi"
+        cpu: "25m"
+      limits:
+        memory: "32Mi"
+        cpu: "50m"
+    
+    # 监控脚本
+    command:
+    - /bin/sh
+    - -c
+    - |
+      echo "监控代理启动..."
+      
+      while true; do
+        # 检查主容器健康状态
+        if wget -q --spider http://localhost:80 2>/dev/null; then
+          echo "[$(date)] Web服务器健康检查: ✅ 正常"
+        else
+          echo "[$(date)] Web服务器健康检查: ❌ 异常"
+        fi
+        
+        # 检查磁盘使用情况
+        echo "[$(date)] 磁盘使用情况:"
+        df -h /var/log/nginx 2>/dev/null || echo "日志目录不可用"
+        
+        # 每60秒检查一次
+        sleep 60
+      done
+    
+    # 环境变量
+    env:
+    - name: CONTAINER_ROLE
+      value: "monitoring-agent"
+    - name: CHECK_INTERVAL
+      value: "60"
+  
+  # Pod 级别的安全上下文
+  securityContext:
+    runAsNonRoot: false  # Nginx 需要 root 权限绑定80端口
+    fsGroup: 101  # nginx 组
+  
+  # 重启策略
+  restartPolicy: Always
+  
+  # DNS 策略
+  dnsPolicy: ClusterFirst
+  
+  # 终止宽限期
+  terminationGracePeriodSeconds: 30
+
+---
+# 配套的 ConfigMap - Nginx 配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  labels:
+    app: web-app
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        
+        # 访问日志格式
+        access_log /var/log/nginx/access.log combined;
+        error_log /var/log/nginx/error.log warn;
+        
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+        }
+        
+        # 健康检查端点
+        location /health {
+            access_log off;
+            return 200 "healthy\n";
+            add_header Content-Type text/plain;
+        }
+        
+        # 状态页面
+        location /status {
+            access_log off;
+            return 200 "Pod: multi-container-demo\nStatus: Running\nContainers: 3\n";
+            add_header Content-Type text/plain;
+        }
+    }
+
+---
+# 配套的 Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: multi-container-service
+  labels:
+    app: web-app
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: web-app

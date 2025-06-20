@@ -1,72 +1,71 @@
 # Kubernetes - Deployment
 
-## Step-01: Introduction to Deployments
-- What is a Deployment?
-- What all we can do using Deployment?
-- Create a Deployment
-- Scale the Deployment
-- Expose the Deployment as a Service
+## 步骤 01：Deployment 介绍
+- 什么是 Deployment？
+- 使用 Deployment 可以做什么？
+- 创建 Deployment
+- 扩展 Deployment
+- 将 Deployment 暴露为 Service
 
-## Step-02: Create Deployment
-- Create Deployment to rollout a ReplicaSet
-- Verify Deployment, ReplicaSet & Pods
-- **Docker Image Location:** https://hub.docker.com/repository/docker/stacksimplify/kubenginx
+## 步骤 02：创建 Deployment
+- 创建 Deployment 来推出 ReplicaSet
+- 验证 Deployment、ReplicaSet 和 Pod
+- **Docker 镜像位置：** https://hub.docker.com/repository/docker/grissomsh/kubenginx
 ```
-# Create Deployment
+# 创建 Deployment
 kubectl create deployment <Deplyment-Name> --image=<Container-Image>
-kubectl create deployment my-first-deployment --image=stacksimplify/kubenginx:1.0.0 
+kubectl create deployment my-first-deployment --image=grissomsh/kubenginx:1.0.0 
 
-# Verify Deployment
+# 验证 Deployment
 kubectl get deployments
 kubectl get deploy 
 
-# Describe Deployment
+# 描述 Deployment
 kubectl describe deployment <deployment-name>
 kubectl describe deployment my-first-deployment
 
-# Verify ReplicaSet
+# 验证 ReplicaSet
 kubectl get rs
 
-# Verify Pod
+# 验证 Pod
 kubectl get po
 ```
-## Step-03: Scaling a Deployment
-- Scale the deployment to increase the number of replicas (pods)
+## 步骤 03：扩展 Deployment
+- 扩展 Deployment 以增加副本（Pod）数量
 ```
-# Scale Up the Deployment
+# 扩展 Deployment
 kubectl scale --replicas=20 deployment/<Deployment-Name>
 kubectl scale --replicas=20 deployment/my-first-deployment 
 
-# Verify Deployment
+# 验证 Deployment
 kubectl get deploy
 
-# Verify ReplicaSet
+# 验证 ReplicaSet
 kubectl get rs
 
-# Verify Pods
+# 验证 Pod
 kubectl get po
 
-# Scale Down the Deployment
+# 缩减 Deployment
 kubectl scale --replicas=10 deployment/my-first-deployment 
-kubectl get deploy
 ```
 
-## Step-04: Expose Deployment as a Service
-- Expose **Deployment** with a service (NodePort Service) to access the application externally (from internet)
+## 步骤 04：将 Deployment 暴露为 Service
+- 使用 Service（NodePort Service）暴露 **Deployment** 以从外部（互联网）访问应用程序
 ```
-# Expose Deployment as a Service
+# 将 Deployment 暴露为 Service
 kubectl expose deployment <Deployment-Name>  --type=NodePort --port=80 --target-port=80 --name=<Service-Name-To-Be-Created>
 kubectl expose deployment my-first-deployment --type=NodePort --port=80 --target-port=80 --name=my-first-deployment-service
 
-# Get Service Info
+# 获取 Service 信息
 kubectl get svc
-Observation: Make a note of port which starts with 3 (Example: 80:3xxxx/TCP). Capture the port 3xxxx and use it in application URL below. 
+观察：记下以 3 开头的端口（例如：80:3xxxx/TCP）。捕获端口 3xxxx 并在下面的应用程序 URL 中使用它。
 
-# Get Public IP of Worker Nodes
+# 获取工作节点的公网 IP
 kubectl get nodes -o wide
-Observation: Make a note of "EXTERNAL-IP" if your Kubernetes cluster is setup on AWS EKS.
+观察：如果您的 Kubernetes 集群在 AWS EKS 上设置，请记下 "EXTERNAL-IP"。
 ```
-- **Access the Application using Public IP**
+- **使用公网 IP 访问应用程序**
 ```
 http://<worker-node-public-ip>:<Node-Port>
 ```

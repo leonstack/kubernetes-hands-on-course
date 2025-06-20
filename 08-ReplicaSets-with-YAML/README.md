@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: myapp2
-        image: stacksimplify/kubenginx:2.0.0
+        image: grissomsh/kubenginx:2.0.0
         ports:
           - containerPort: 80
 ```

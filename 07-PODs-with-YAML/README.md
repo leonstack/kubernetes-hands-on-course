@@ -1,6 +1,6 @@
-# PODs with YAML
-## Step-01: Kubernetes YAML Top level Objects
-- Discuss about the k8s YAML top level objects
+# Kubernetes - 使用 YAML 管理 POD
+## 步骤 01：Kubernetes YAML 顶级对象
+- 讨论 Kubernetes YAML 顶级对象
 - **01-kube-base-definition.yml**
 ```yml
 apiVersion:
@@ -9,77 +9,77 @@ metadata:
   
 spec:
 ```
--  **Pod API Objects Reference:**  https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pod-v1-core
+-  **Pod API 对象参考：**  https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pod-v1-core
 
-## Step-02: Create Simple Pod Definition using YAML 
-- We are going to create a very basic pod definition
+## 步骤 02：使用 YAML 创建简单的 Pod 定义
+- 我们将创建一个非常基本的 Pod 定义
 - **02-pod-definition.yml**
 ```yml
-apiVersion: v1 # String
-kind: Pod  # String
-metadata: # Dictionary
+apiVersion: v1 # 字符串
+kind: Pod  # 字符串
+metadata: # 字典
   name: myapp-pod
-  labels: # Dictionary 
+  labels: # 字典 
     app: myapp         
 spec:
-  containers: # List
+  containers: # 列表
     - name: myapp
-      image: stacksimplify/kubenginx:1.0.0
+      image: grissomsh/kubenginx:1.0.0
       ports:
         - containerPort: 80
 ```
-- **Create Pod**
+- **创建 Pod**
 ```
-# Create Pod
+# 创建 Pod
 kubectl create -f 02-pod-definition.yml
-[or]
+[或]
 kubectl apply -f 02-pod-definition.yml
 
-# List Pods
+# 列出 Pod
 kubectl get pods
 ```
 
-## Step-03: Create a NodePort Service
+## 步骤 03：创建 NodePort Service
 - **03-pod-nodeport-service.yml**
 ```yml
 apiVersion: v1
 kind: Service
 metadata:
-  name: myapp-pod-nodeport-service  # Name of the Service
+  name: myapp-pod-nodeport-service  # Service 的名称
 spec:
   type: NodePort
   selector:
-  # Loadbalance traffic across Pods matching this label selector
+  # 在匹配此标签选择器的 Pod 之间负载均衡流量
     app: myapp
-  # Accept traffic sent to port 80    
+  # 接受发送到端口 80 的流量    
   ports: 
     - name: http
-      port: 80    # Service Port
-      targetPort: 80 # Container Port
+      port: 80    # Service 端口
+      targetPort: 80 # 容器端口
       nodePort: 31231 # NodePort
 ```
-- **Create NodePort Service for Pod**
+- **为 Pod 创建 NodePort Service**
 ```
-# Create Service
+# 创建 Service
 kubectl apply -f 03-pod-nodeport-service.yml
 
-# List Service
+# 列出 Service
 kubectl get svc
 
-# Get Public IP
+# 获取公网 IP
 kubectl get nodes -o wide
 
-# Access Application
+# 访问应用程序
 http://<WorkerNode-Public-IP>:<NodePort>
 http://<WorkerNode-Public-IP>:31231
 ```
 
-## API Object References
+## API 对象参考
 -  **Pod**: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#pod-v1-core
 - **Service**: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.18/#service-v1-core
 
-## Updated API Object References
+## 更新的 API 对象参考
 -  **Pod**: https://kubernetes.io/docs/reference/kubernetes-api/workload-resources/pod-v1/
 -  **Service**: https://kubernetes.io/docs/reference/kubernetes-api/service-resources/service-v1/
-- **Kubernetes API Reference:** https://kubernetes.io/docs/reference/kubernetes-api/
+- **Kubernetes API 参考：** https://kubernetes.io/docs/reference/kubernetes-api/
 

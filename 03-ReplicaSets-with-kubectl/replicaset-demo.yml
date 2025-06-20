@@ -4,16 +4,85 @@ metadata:
   name: my-helloworld-rs
   labels:
     app: my-helloworld
+    version: v1.0.0
+    component: frontend
+    tier: web
+  annotations:
+    description: "Hello World ReplicaSet for Kubernetes fundamentals demo"
+    maintainer: "kubernetes-fundamentals-team"
 spec:
-  replicas: 6
+  replicas: 3  # 恢复到合理的副本数
   selector:
     matchLabels:
       app: my-helloworld
+      version: v1.0.0
   template:
     metadata:
       labels:
         app: my-helloworld
+        version: v1.0.0
+        component: frontend
+        tier: web
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
     spec:
       containers:
       - name: my-helloworld-app
-        image: stacksimplify/kube-helloworld:1.0.0
+        image: grissomsh/kube-helloworld:1.0.0
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        # 资源限制和请求
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "100m"
+        # 健康检查
+        livenessProbe:
+          httpGet:
+            path: /hello
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /hello
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        # 环境变量
+        env:
+        - name: APP_NAME
+          value: "my-helloworld"
+        - name: APP_VERSION
+          value: "1.0.0"
+        - name: ENVIRONMENT
+          value: "development"
+        # 安全上下文
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsNonRoot: true
+          runAsUser: 1000
+          readOnlyRootFilesystem: false
+          capabilities:
+            drop:
+            - ALL
+      # Pod 安全上下文
+      securityContext:
+        fsGroup: 1000
+      # 重启策略
+      restartPolicy: Always
+      # DNS 策略
+      dnsPolicy: ClusterFirst
+      # 终止宽限期
+      terminationGracePeriodSeconds: 30

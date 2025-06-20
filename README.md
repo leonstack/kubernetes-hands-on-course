@@ -1,139 +1,157 @@
-# Kubernetes Fundamentals
+# Kubernetes 基础教程
 
-[![Image](https://stacksimplify.com/course-images/AWS-EKS-Kubernetes-Masterclass-DevOps-Microservices-course.png "AWS EKS Kubernetes - Masterclass")](https://www.udemy.com/course/aws-eks-kubernetes-masterclass-devops-microservices/?referralCode=257C9AD5B5AF8D12D1E1)
+[![Image](https://stacksimplify.com/course-images/AWS-EKS-Kubernetes-Masterclass-DevOps-Microservices-course.png "AWS EKS Kubernetes - 大师班")](https://www.udemy.com/course/aws-eks-kubernetes-masterclass-devops-microservices/?referralCode=257C9AD5B5AF8D12D1E1)
 
-## Two FREE Courses on Udemy
-- [Kubernetes for Absolute Beginners on AWS Cloud | Part-1](https://www.udemy.com/course/kubernetes-for-absolute-beginners-on-aws-cloud-part-1)
-- [Kubernetes for Absolute Beginners on AWS Cloud | Part-2](https://www.udemy.com/course/kubernetes-for-absolute-beginners-on-aws-cloud-part-2)
+## Udemy 上的两门免费课程
 
-## Contents
+- [AWS 云上 Kubernetes 绝对初学者教程 | 第一部分](https://www.udemy.com/course/kubernetes-for-absolute-beginners-on-aws-cloud-part-1)
+- [AWS 云上 Kubernetes 绝对初学者教程 | 第二部分](https://www.udemy.com/course/kubernetes-for-absolute-beginners-on-aws-cloud-part-2)
 
-| S.No | Course Contents |
+## 目录
+
+| 序号 | 课程内容 |
 | ---- | --------------- |
-| 1. | Kubernetes Architecture  |
-| 2. | Pods with kubectl  |
-| 3. | ReplicaSets with kubectl  |
-| 4. | Deployments with kubectl  |
-| 5. | Services with kubectl  |
-| 6. | YAML Basics  |
-| 7. | Pods with YAML  |
-| 8. | ReplicaSets with YAML  |
-| 9. | Deployments with YAML  |
-| 10. | Services with YAML  |
+| 1. | Kubernetes 架构  |
+| 2. | 使用 kubectl 管理 Pod  |
+| 3. | 使用 kubectl 管理 ReplicaSet  |
+| 4. | 使用 kubectl 管理 Deployment  |
+| 5. | 使用 kubectl 管理 Service  |
+| 6. | YAML 基础  |
+| 7. | 使用 YAML 管理 Pod  |
+| 8. | 使用 YAML 管理 ReplicaSet  |
+| 9. | 使用 YAML 管理 Deployment  |
+| 10. | 使用 YAML 管理 Service  |
 
-## Imperative & Declarative Approach
-- Pods
-- ReplicaSets
-- Deployments
-- Services
+## 命令式和声明式方法
 
-## List of Docker Images
+- Pod
+- ReplicaSet
+- Deployment
+- Service
 
-| Application Name  | Docker Image Name |
+## Docker 镜像列表
+
+| 应用程序名称  | Docker 镜像名称 |
 | ----------------- | ----------------- |
-| Simple Nginx V1  | stacksimplify/kubenginx:1.0.0  |
-| Spring Boot Hello World API  | stacksimplify/kube-helloworld:1.0.0  |
-| Simple Nginx V2  | stacksimplify/kubenginx:2.0.0  |
-| Simple Nginx V3  | stacksimplify/kubenginx:3.0.0  |
-| Simple Nginx V4  | stacksimplify/kubenginx:4.0.0  |
-| Backend Application  | stacksimplify/kube-helloworld:1.0.0  |
-| Frontend Application  | stacksimplify/kube-frontend-nginx:1.0.0  |
+| 简单 Nginx V1  | grissomsh/kubenginx:1.0.0  |
+| Spring Boot Hello World API  | grissomsh/kube-helloworld:1.0.0  |
+| 简单 Nginx V2  | grissomsh/kubenginx:2.0.0  |
+| 简单 Nginx V3  | grissomsh/kubenginx:3.0.0  |
+| 简单 Nginx V4  | grissomsh/kubenginx:4.0.0  |
+| 后端应用程序  | grissomsh/kube-helloworld:1.0.0  |
+| 前端应用程序  | grissomsh/kube-frontend-nginx:1.0.0  |
 
-## Kuberentes Fundamentals - Step by Step
+## Kubernetes 基础教程 - 逐步学习
 
-### EKS -  Install AWS CLI, kubectl CLI and eksctl CLI
-- **Step-01:** CLI's Introduction
-- **Step-02:** Install AWS CLI
-- **Step-03:** Install kubectl CLI
-- **Step-04:** Install eksctl CLI
+### EKS - 安装 AWS CLI、kubectl CLI 和 eksctl CLI
 
-### EKS - Create Cluster using eksctl
-- **Step-01:** EKS Cluster Introduction
-- **Step-02:** Create EKS Cluster
-- **Step-03:** Create IAM OIDC Provider and Managed Node Group in Public Subnets
-- **Step-04:** Verify EKS Cluster Node Groups
+- **步骤 01：** CLI 工具介绍
+- **步骤 02：** 安装 AWS CLI
+- **步骤 03：** 安装 kubectl CLI
+- **步骤 04：** 安装 eksctl CLI
 
-### EKS Cluster Pricing Note and Delete Cluster
-- **Step-01:** EKS Cluster Pricing Note
-- **Step-02:** Delete EKS Cluster Node Group
+### EKS - 使用 eksctl 创建集群
 
-### Kubernetes Architecture
-- **Step-01:** Kubernetes Architecture
-- **Step-02:** Kubernetes vs AWS EKS Architecture
-- **Step-03:** Kubernetes Fundamentals - Introduction
+- **步骤 01：** EKS 集群介绍
+- **步骤 02：** 创建 EKS 集群
+- **步骤 03：** 在公有子网中创建 IAM OIDC 提供者和托管节点组
+- **步骤 04：** 验证 EKS 集群节点组
 
-### Kubernetes - Pods with kubectl
-- **Step-01:** Pods Introduction
-- **Step-02:** Pods Demo
-- **Step-03:** Node Port Service Introduction
-- **Step-04:** Node Port Service and Pods Demo
-- **Step-05:** Interact with Pod - Connect to contianer in a pod
-- **Step-06:** Delete Pod
+### EKS 集群定价说明和删除集群
 
-### Kubernetes - ReplicaSets with kubectl
-- **Step-01:** ReplicaSet Introduction
-- **Step-02:** Create ReplicaSet
-- **Step-03:** Expose and Perform High Availability Tests and Delete ReplicaSet
+- **步骤 01：** EKS 集群定价说明
+- **步骤 02：** 删除 EKS 集群节点组
 
-### Kubernetes - Deployments with kubectl
-- **Step-02:** Deployments Demo
-- **Step-03:** Update Deployment using Set Image Option
-- **Step-04:** Edit Deployment using kubectl edit
-- **Step-05:** Rollback Application to Previous Version - Undo Deployment
-- **Step-06:** Pause and Resume Deployments
+### Kubernetes 架构
 
-### Kubernetes - Services with kubectl
-- **Step-01:** Services Introduction
-- **Step-02:** Services Demo
+- **步骤 01：** Kubernetes 架构
+- **步骤 02：** Kubernetes vs AWS EKS 架构
+- **步骤 03：** Kubernetes 基础 - 介绍
 
-### YAML Basics
-- **Step-01:** Introduction to Kubernetes Declarative Approach
-- **Step-02:** YAML Basics
+### Kubernetes - 使用 kubectl 管理 Pod
 
-### Kubernetes - Pods with YAML
-- **Step-01:** Create Pod Manifest in YAML
-- **Step-02:** Create Node Port Service & Test
+- **步骤 01：** Pod 介绍
+- **步骤 02：** Pod 演示
+- **步骤 03：** NodePort Service 介绍
+- **步骤 04：** NodePort Service 和 Pod 演示
+- **步骤 05：** 与 Pod 交互 - 连接到 Pod 中的容器
+- **步骤 06：** 删除 Pod
 
-### Kubernetes - ReplicaSets with YAML
-- **Step-01:** Create ReplicaSet Manifests with YAML
-- **Step-02:** Create Node Port Service & Test
+### Kubernetes - 使用 kubectl 管理 ReplicaSet
 
-### Kubernetes - Deployments with YAML
-- **Step-01:** Create Deployment Manifest, Deploy & Test
+- **步骤 01：** ReplicaSet 介绍
+- **步骤 02：** 创建 ReplicaSet
+- **步骤 03：** 暴露服务并执行高可用性测试，然后删除 ReplicaSet
 
-### Kubernetes - Services with YAML
-- **Step-01:** Backend Application - Create Deployment and ClusterIP Service
-- **Step-02:** Frontend Application - Create Deployment and NodePort Service
-- **Step-03:** Deploy and Test - Frontend and Backend Applications
+### Kubernetes - 使用 kubectl 管理 Deployment
 
+- **步骤 02：** Deployment 演示
+- **步骤 03：** 使用 Set Image 选项更新 Deployment
+- **步骤 04：** 使用 kubectl edit 编辑 Deployment
+- **步骤 05：** 回滚应用程序到之前版本 - 撤销 Deployment
+- **步骤 06：** 暂停和恢复 Deployment
 
-## What will students learn in your course?
-- You will learn creating Pods, ReplicaSets, Deployments and Services using kubectl
-- You will learn creating Pods, ReplicaSets, Deployments and Services using YAML
-- You will write kubernetes manifests using YAML with confidence after going through live template writing sections
-- You will learn Kubernetes Fundamentals in both imperative and declarative approaches
-- You will learn to create AWS EKS Cluster using eksctl CLI
-- You will master many kubectl commands over the process
-- You will have step by step instructions documented using github repository
+### Kubernetes - 使用 kubectl 管理 Service
 
-## Are there any course requirements or prerequisites?
-- You must have an AWS account to follow with me for hands-on activities.
-- You dont need to have any basic kubernetes knowledge to start this course.  
+- **步骤 01：** Service 介绍
+- **步骤 02：** Service 演示
 
+### YAML 基础
 
-## Who are your target students?
-- Any beginner who is interested in learning kubernetes on cloud using AWS EKS. 
-- AWS Architects or Sysadmins or Developers who are planning to master Elastic Kubernetes Service (EKS) for running applications on Kubernetes
+- **步骤 01：** Kubernetes 声明式方法介绍
+- **步骤 02：** YAML 基础
 
-## Each of my courses come with
-- Amazing Hands-on Step By Step Learning Experiences
-- Real Implementation Experience
-- Friendly Support in the Q&A section
-- 30 Day "No Questions Asked" Money Back Guarantee!
+### Kubernetes - 使用 YAML 管理 Pod
 
-## My Other AWS Courses
-- [Udemy Enroll](https://github.com/stacksimplify/udemy-enroll)
+- **步骤 01：** 使用 YAML 创建 Pod 清单
+- **步骤 02：** 创建 NodePort Service 并测试
 
-## Stack Simplify Udemy Profile
-- [Udemy Profile](https://www.udemy.com/user/kalyan-reddy-9/)
+### Kubernetes - 使用 YAML 管理 ReplicaSet
 
+- **步骤 01：** 使用 YAML 创建 ReplicaSet 清单
+- **步骤 02：** 创建 NodePort Service 并测试
+
+### Kubernetes - 使用 YAML 管理 Deployment
+
+- **步骤 01：** 创建 Deployment 清单、部署并测试
+
+### Kubernetes - 使用 YAML 管理 Service
+
+- **步骤 01：** 后端应用程序 - 创建 Deployment 和 ClusterIP Service
+- **步骤 02：** 前端应用程序 - 创建 Deployment 和 NodePort Service
+- **步骤 03：** 部署和测试 - 前端和后端应用程序
+
+## 学生将在本课程中学到什么？
+
+- 您将学习使用 kubectl 创建 Pod、ReplicaSet、Deployment 和 Service
+- 您将学习使用 YAML 创建 Pod、ReplicaSet、Deployment 和 Service
+- 通过实时模板编写部分，您将能够自信地使用 YAML 编写 Kubernetes 清单
+- 您将学习命令式和声明式两种方法的 Kubernetes 基础知识
+- 您将学习使用 eksctl CLI 创建 AWS EKS 集群
+- 在学习过程中您将掌握许多 kubectl 命令
+- 您将获得使用 GitHub 仓库记录的逐步说明
+
+## 课程有什么要求或先决条件吗？
+
+- 您必须拥有 AWS 账户才能跟随我进行实践活动。
+- 您不需要具备任何 Kubernetes 基础知识即可开始本课程。
+
+## 谁是您的目标学生？
+
+- 任何有兴趣使用 AWS EKS 在云上学习 Kubernetes 的初学者。
+- 计划掌握弹性 Kubernetes 服务 (EKS) 以在 Kubernetes 上运行应用程序的 AWS 架构师、系统管理员或开发人员
+
+## 我的每门课程都包含
+
+- 令人惊叹的逐步实践学习体验
+- 真实的实施经验
+- 在问答部分提供友好的支持
+- 30 天"无条件"退款保证！
+
+## 我的其他 AWS 课程
+
+- [Udemy 注册](https://github.com/grissomsh/udemy-enroll)
+
+## Stack Simplify Udemy 个人资料
+
+- [Udemy 个人资料](https://www.udemy.com/user/kalyan-reddy-9/)

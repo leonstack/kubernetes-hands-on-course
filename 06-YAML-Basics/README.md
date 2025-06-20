@@ -1,17 +1,17 @@
-# YAML Basics
+# YAML 基础
 
-## Step-01: Comments & Key Value Pairs
-- Space after colon is mandatory to differentiate key and value
+## 步骤 01：注释和键值对
+- 冒号后的空格是必需的，用于区分键和值
 ```yml
-# Defining simple key value pairs
+# 定义简单的键值对
 name: kalyan
 age: 23
 city: Hyderabad
 ```
 
-## Step-02: Dictionary / Map
-- Set of properties grouped together after an item
-- Equal amount of blank space required for all the items under a dictionary
+## 步骤 02：字典 / 映射
+- 在一个项目后分组在一起的一组属性
+- 字典下的所有项目都需要相同数量的空白空间
 ```yml
 person:
   name: kalyan
@@ -19,50 +19,50 @@ person:
   city: Hyderabad
 ```
 
-## Step-03: Array / Lists
-- Dash indicates an element of an array
+## 步骤 03：数组 / 列表
+- 破折号表示数组的一个元素
 ```yml
-person: # Dictionary
+person: # 字典
   name: kalyan
   age: 23
   city: Hyderabad
-  hobbies: # List  
-    - cycling
-    - cookines
-  hobbies: [cycling, cooking]   # List with a differnt notation  
-```  
-
-## Step-04: Multiple Lists
-- Dash indicates an element of an array
-```yml
-person: # Dictionary
-  name: kalyan
-  age: 23
-  city: Hyderabad
-  hobbies: # List  
+  hobbies: # 列表  
     - cycling
     - cooking
-  hobbies: [cycling, cooking]   # List with a differnt notation  
+  hobbies: [cycling, cooking]   # 使用不同表示法的列表  
+```  
+
+## 步骤 04：多个列表
+- 破折号表示数组的一个元素
+```yml
+person: # 字典
+  name: kalyan
+  age: 23
+  city: Hyderabad
+  hobbies: # 列表  
+    - cycling
+    - cooking
+  hobbies: [cycling, cooking]   # 使用不同表示法的列表  
   friends: # 
     - name: friend1
       age: 22
     - name: friend2
       age: 25            
-```  
+```
 
 
-## Step-05: Sample Pod Tempalte for Reference
+## 步骤 05：Pod 模板示例供参考
 ```yml
-apiVersion: v1 # String
-kind: Pod  # String
-metadata: # Dictionary
+apiVersion: v1 # 字符串
+kind: Pod  # 字符串
+metadata: # 字典
   name: myapp-pod
-  labels: # Dictionary 
+  labels: # 字典 
     app: myapp         
 spec:
-  containers: # List
+  containers: # 列表
     - name: myapp
-      image: stacksimplify/kubenginx:1.0.0
+      image: grissomsh/kubenginx:1.0.0
       ports:
         - containerPort: 80
           protocol: "TCP"

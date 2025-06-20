@@ -1,0 +1,86 @@
+# =============================================================================
+# Docker 构建忽略文件
+# 用于减少构建上下文大小，提高构建效率
+# =============================================================================
+
+# Maven 构建产物（多阶段构建中会重新生成）
+target/
+*.jar
+*.war
+*.ear
+
+# IDE 文件
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+.project
+.classpath
+.settings/
+
+# 操作系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 版本控制
+.git/
+.gitignore
+.gitattributes
+.svn/
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Node.js（如果项目中有前端资源）
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 测试覆盖率报告
+coverage/
+*.lcov
+
+# 文档和说明文件（构建时不需要）
+README.md
+*.md
+docs/
+
+# Docker 相关文件（避免递归复制）
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# 环境配置文件（可能包含敏感信息）
+.env
+.env.local
+.env.*.local
+
+# 备份文件
+*.bak
+*.backup
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+
+# 其他开发工具文件
+.mvn/wrapper/maven-wrapper.jar
+.mvn/wrapper/maven-wrapper.properties
+mvnw
+mvnw.cmd
