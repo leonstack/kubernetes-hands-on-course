@@ -52,6 +52,110 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 			</plugin>
+			
+			<!-- 使用 Maven 构建 Docker 镜像的方法 -->
+			<!-- 方法一：使用 dockerfile-maven-plugin -->
+			<!--
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+				<version>1.4.13</version>
+				<configuration>
+					<repository>${project.artifactId}</repository>
+					<tag>${project.version}</tag>
+					<buildArgs>
+						<JAR_FILE>target/${project.build.finalName}.jar</JAR_FILE>
+					</buildArgs>
+				</configuration>
+				<executions>
+					<execution>
+						<id>default</id>
+						<goals>
+							<goal>build</goal>
+							<goal>push</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			-->
+			
+			<!-- 方法二：使用 jib-maven-plugin (无需 Dockerfile) -->
+			<!--
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.3.1</version>
+				<configuration>
+					<from>
+						<image>openjdk:8-jre-alpine</image>
+					</from>
+					<to>
+						<image>${project.artifactId}:${project.version}</image>
+					</to>
+					<container>
+						<ports>
+							<port>8080</port>
+						</ports>
+						<creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+					</container>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>build</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			-->
+			
+			<!-- 方法三：使用 fabric8 docker-maven-plugin -->
+			<!--
+			<plugin>
+				<groupId>io.fabric8</groupId>
+				<artifactId>docker-maven-plugin</artifactId>
+				<version>0.40.2</version>
+				<configuration>
+					<images>
+						<image>
+							<name>${project.artifactId}:${project.version}</name>
+							<build>
+								<dockerFile>Dockerfile</dockerFile>
+								<contextDir>${project.basedir}</contextDir>
+								<args>
+									<JAR_FILE>target/${project.build.finalName}.jar</JAR_FILE>
+								</args>
+							</build>
+						</image>
+					</images>
+				</configuration>
+				<executions>
+					<execution>
+						<id>build-image</id>
+						<phase>package</phase>
+						<goals>
+							<goal>build</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			-->
+			
+			<!-- 使用说明：
+			1. dockerfile-maven-plugin: 需要项目根目录有 Dockerfile
+			   构建命令: mvn dockerfile:build
+			   推送命令: mvn dockerfile:push
+			   
+			2. jib-maven-plugin: 无需 Dockerfile，直接构建镜像
+			   构建命令: mvn jib:build
+			   构建到本地 Docker: mvn jib:dockerBuild
+			   
+			3. docker-maven-plugin: 功能最全面，支持多种构建方式
+			   构建命令: mvn docker:build
+			   启动容器: mvn docker:start
+			   停止容器: mvn docker:stop
+			-->
 		</plugins>
 	</build>
 
