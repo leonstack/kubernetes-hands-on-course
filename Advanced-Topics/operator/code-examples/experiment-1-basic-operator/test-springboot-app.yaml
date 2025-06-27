@@ -1,0 +1,10 @@
+# 基础 SpringBootApp 测试示例
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: demo-app
+  namespace: default
+spec:
+  image: "springio/gs-spring-boot-docker:latest"
+  replicas: 2
+  port: 8080

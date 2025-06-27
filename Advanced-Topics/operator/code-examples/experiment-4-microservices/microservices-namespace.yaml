@@ -1,0 +1,95 @@
+# 微服务命名空间和配置
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microservices
+  labels:
+    name: microservices
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gateway-config
+  namespace: microservices
+data:
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: gateway-service
+      cloud:
+        gateway:
+          routes:
+          - id: user-service
+            uri: http://user-service:8080
+            predicates:
+            - Path=/api/users/**
+          - id: order-service
+            uri: http://order-service:8080
+            predicates:
+            - Path=/api/orders/**
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-service-config
+  namespace: microservices
+data:
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: user-service
+      datasource:
+        url: jdbc:postgresql://postgres:5432/userdb
+        username: user
+        password: password
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: true
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: order-service-config
+  namespace: microservices
+data:
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: order-service
+      datasource:
+        url: jdbc:postgresql://postgres:5432/orderdb
+        username: user
+        password: password
+        driver-class-name: org.postgresql.Driver
+      jpa:
+        hibernate:
+          ddl-auto: update
+        show-sql: true
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics,prometheus
+    feign:
+      client:
+        config:
+          user-service:
+            url: http://user-service:8080

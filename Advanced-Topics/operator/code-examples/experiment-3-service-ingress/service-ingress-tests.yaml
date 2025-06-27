@@ -1,0 +1,80 @@
+# NodePort 服务测试
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: demo-app-nodeport
+  namespace: default
+spec:
+  image: "springio/gs-spring-boot-docker:latest"
+  replicas: 1
+  port: 8080
+  service:
+    type: NodePort
+    nodePort: 30080
+    ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+---
+# LoadBalancer 服务测试
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: demo-app-loadbalancer
+  namespace: default
+spec:
+  image: "springio/gs-spring-boot-docker:latest"
+  replicas: 2
+  port: 8080
+  service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: "nlb"
+---
+# Ingress 测试
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: demo-app-ingress
+  namespace: default
+spec:
+  image: "springio/gs-spring-boot-docker:latest"
+  replicas: 2
+  port: 8080
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    className: "nginx"
+    host: "demo.example.com"
+    path: "/"
+    pathType: "Prefix"
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/rewrite-target: "/"
+---
+# Ingress with TLS 测试
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: demo-app-ingress-tls
+  namespace: default
+spec:
+  image: "springio/gs-spring-boot-docker:latest"
+  replicas: 2
+  port: 8080
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    className: "nginx"
+    host: "secure.example.com"
+    path: "/"
+    pathType: "Prefix"
+    tls:
+      enabled: true
+      secretName: "demo-tls-secret"
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      cert-manager.io/cluster-issuer: "letsencrypt-prod"

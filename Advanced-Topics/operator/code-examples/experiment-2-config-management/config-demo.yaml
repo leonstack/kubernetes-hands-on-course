@@ -1,0 +1,45 @@
+# 配置管理测试 ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demo-config
+  namespace: default
+data:
+  application.yml: |
+    server:
+      port: 8080
+    spring:
+      application:
+        name: demo-app
+    logging:
+      level:
+        com.example: DEBUG
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,metrics
+  custom.properties: |
+    app.feature.enabled=true
+    app.max.connections=100
+---
+# 带配置管理的 SpringBootApp
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: demo-app-with-config
+  namespace: default
+spec:
+  image: "springio/gs-spring-boot-docker:latest"
+  replicas: 1
+  port: 8080
+  config:
+    configMapRef:
+      name: demo-config
+      optional: false
+    mountPath: "/app/config"
+    env:
+    - name: JAVA_OPTS
+      value: "-Xmx512m -Xms256m"
+    - name: SPRING_PROFILES_ACTIVE
+      value: "production"

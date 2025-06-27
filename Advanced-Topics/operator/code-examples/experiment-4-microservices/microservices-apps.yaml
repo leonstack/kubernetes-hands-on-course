@@ -1,0 +1,91 @@
+# 微服务应用部署配置
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: gateway-service
+  namespace: microservices
+spec:
+  image: "your-registry/gateway-service:latest"
+  replicas: 2
+  port: 8080
+  config:
+    configMapRef:
+      name: gateway-config
+    mountPath: "/app/config"
+    env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "kubernetes"
+    - name: JAVA_OPTS
+      value: "-Xmx512m -Xms256m"
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    className: "nginx"
+    host: "api.microservices.local"
+    path: "/"
+    annotations:
+      nginx.ingress.kubernetes.io/ssl-redirect: "false"
+      nginx.ingress.kubernetes.io/rewrite-target: "/"
+---
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: user-service
+  namespace: microservices
+spec:
+  image: "your-registry/user-service:latest"
+  replicas: 2
+  port: 8080
+  config:
+    configMapRef:
+      name: user-service-config
+    mountPath: "/app/config"
+    env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "kubernetes"
+    - name: JAVA_OPTS
+      value: "-Xmx512m -Xms256m"
+    - name: DB_HOST
+      value: "postgres"
+    - name: DB_PORT
+      value: "5432"
+  service:
+    type: ClusterIP
+    ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
+---
+apiVersion: springboot.tutorial.example.com/v1
+kind: SpringBootApp
+metadata:
+  name: order-service
+  namespace: microservices
+spec:
+  image: "your-registry/order-service:latest"
+  replicas: 2
+  port: 8080
+  config:
+    configMapRef:
+      name: order-service-config
+    mountPath: "/app/config"
+    env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "kubernetes"
+    - name: JAVA_OPTS
+      value: "-Xmx512m -Xms256m"
+    - name: DB_HOST
+      value: "postgres"
+    - name: DB_PORT
+      value: "5432"
+    - name: USER_SERVICE_URL
+      value: "http://user-service:8080"
+  service:
+    type: ClusterIP
+    ports:
+    - name: metrics
+      port: 9090
+      targetPort: 9090
+      protocol: TCP
