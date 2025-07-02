@@ -58,11 +58,20 @@
       - [3.3.1 部署额外调度器](#331-部署额外调度器)
       - [3.3.2 指定调度器](#332-指定调度器)
       - [3.3.3 调度器选择策略](#333-调度器选择策略)
-  - [4. 总结](#4-总结)
-    - [4.1 调度器核心概念回顾](#41-调度器核心概念回顾)
-    - [4.2 调度理论要点](#42-调度理论要点)
-    - [4.3 实践指导原则](#43-实践指导原则)
-  - [5. 术语表](#5-术语表)
+  - [4. 调度决策审计与监控](#4-调度决策审计与监控)
+    - [4.1 调度决策审计机制](#41-调度决策审计机制)
+      - [4.1.1 审计日志配置](#411-审计日志配置)
+      - [4.1.2 调度事件追踪](#412-调度事件追踪)
+      - [4.1.3 调度指标监控](#413-调度指标监控)
+    - [4.2 高级故障排查](#42-高级故障排查)
+      - [4.2.1 调度器性能分析](#421-调度器性能分析)
+      - [4.2.2 调度失败深度分析](#422-调度失败深度分析)
+      - [4.2.3 调度器日志分析](#423-调度器日志分析)
+  - [5. 总结](#5-总结)
+    - [5.1 调度器核心概念回顾](#51-调度器核心概念回顾)
+    - [5.2 调度理论要点](#52-调度理论要点)
+    - [5.3 实践指导原则](#53-实践指导原则)
+  - [6. 术语表](#6-术语表)
     - [A](#a)
     - [B](#b)
     - [C](#c)
@@ -1436,9 +1445,562 @@ data:
 
 ---
 
-## 4. 总结
+## 4. 调度决策审计与监控
 
-### 4.1 调度器核心概念回顾
+### 4.1 调度决策审计机制
+
+调度决策审计是企业级 Kubernetes 集群的重要组成部分，用于记录、分析和追踪调度器的决策过程。
+
+#### 4.1.1 审计日志配置
+
+**启用调度器审计日志：**
+
+```yaml
+# 调度器审计策略配置
+apiVersion: audit.k8s.io/v1
+kind: Policy
+rules:
+# 记录所有调度决策
+- level: Metadata
+  namespaces: ["default", "production"]
+  resources:
+  - group: ""
+    resources: ["pods"]
+  verbs: ["create", "update", "patch"]
+  omitStages: ["RequestReceived"]
+  
+# 记录调度器绑定操作
+- level: Request
+  resources:
+  - group: ""
+    resources: ["pods/binding"]
+  verbs: ["create"]
+  
+# 记录调度失败事件
+- level: RequestResponse
+  resources:
+  - group: ""
+    resources: ["events"]
+  verbs: ["create"]
+  namespaceSelector:
+    matchLabels:
+      audit: "scheduler"
+```
+
+**调度器部署配置：**
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: custom-scheduler
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: custom-scheduler
+  template:
+    metadata:
+      labels:
+        app: custom-scheduler
+    spec:
+      containers:
+      - name: kube-scheduler
+        image: registry.k8s.io/kube-scheduler:v1.27.0
+        command:
+        - kube-scheduler
+        - --config=/etc/kubernetes/scheduler-config.yaml
+        - --audit-log-path=/var/log/scheduler-audit.log
+        - --audit-log-maxage=30
+        - --audit-log-maxbackup=10
+        - --audit-log-maxsize=100
+        - --audit-policy-file=/etc/kubernetes/audit-policy.yaml
+        - --v=2
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kubernetes
+        - name: audit-logs
+          mountPath: /var/log
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+      volumes:
+      - name: config
+        configMap:
+          name: scheduler-config
+      - name: audit-logs
+        hostPath:
+          path: /var/log/scheduler
+          type: DirectoryOrCreate
+```
+
+#### 4.1.2 调度事件追踪
+
+**调度事件分析脚本：**
+
+```bash
+#!/bin/bash
+# scheduler-audit-analyzer.sh
+
+# 分析调度成功率
+analyze_scheduling_success_rate() {
+    local namespace=${1:-"default"}
+    local time_range=${2:-"1h"}
+    
+    echo "=== 调度成功率分析 (最近 $time_range) ==="
+    
+    # 获取调度事件
+    kubectl get events -n $namespace \
+        --field-selector reason=Scheduled \
+        --sort-by='.lastTimestamp' \
+        --output=json | jq -r '
+        .items[] | 
+        select(.lastTimestamp > (now - 3600)) |
+        "\(.lastTimestamp) \(.involvedObject.name) \(.message)"
+    '
+    
+    # 统计调度失败
+    kubectl get events -n $namespace \
+        --field-selector reason=FailedScheduling \
+        --sort-by='.lastTimestamp' \
+        --output=json | jq -r '
+        .items[] | 
+        select(.lastTimestamp > (now - 3600)) |
+        "FAILED: \(.lastTimestamp) \(.involvedObject.name) \(.message)"
+    '
+}
+
+# 分析调度延迟
+analyze_scheduling_latency() {
+    echo "=== 调度延迟分析 ==="
+    
+    kubectl get pods --all-namespaces -o json | jq -r '
+    .items[] |
+    select(.status.conditions[]? | select(.type == "PodScheduled" and .status == "True")) |
+    {
+        name: .metadata.name,
+        namespace: .metadata.namespace,
+        created: .metadata.creationTimestamp,
+        scheduled: (.status.conditions[] | select(.type == "PodScheduled").lastTransitionTime)
+    } |
+    "\(.namespace)/\(.name): \(.created) -> \(.scheduled)"
+    '
+}
+
+# 分析节点资源使用
+analyze_node_utilization() {
+    echo "=== 节点资源使用分析 ==="
+    
+    kubectl top nodes --sort-by=cpu
+    echo ""
+    kubectl top nodes --sort-by=memory
+}
+
+# 主函数
+main() {
+    case "$1" in
+        "success-rate")
+            analyze_scheduling_success_rate $2 $3
+            ;;
+        "latency")
+            analyze_scheduling_latency
+            ;;
+        "utilization")
+            analyze_node_utilization
+            ;;
+        "all")
+            analyze_scheduling_success_rate
+            echo ""
+            analyze_scheduling_latency
+            echo ""
+            analyze_node_utilization
+            ;;
+        *)
+            echo "用法: $0 {success-rate|latency|utilization|all} [namespace] [time-range]"
+            echo "示例: $0 success-rate default 2h"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
+```
+
+#### 4.1.3 调度指标监控
+
+**Prometheus 监控配置：**
+
+```yaml
+# scheduler-monitoring.yaml
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: scheduler-metrics
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: custom-scheduler
+  endpoints:
+  - port: metrics
+    interval: 30s
+    path: /metrics
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-metrics
+  namespace: kube-system
+  labels:
+    app: custom-scheduler
+spec:
+  ports:
+  - name: metrics
+    port: 10259
+    targetPort: 10259
+  selector:
+    app: custom-scheduler
+```
+
+**关键调度指标：**
+
+```promql
+# 调度延迟 P99
+histogram_quantile(0.99, 
+  rate(scheduler_scheduling_duration_seconds_bucket[5m])
+)
+
+# 调度成功率
+rate(scheduler_pod_scheduling_attempts_total{result="scheduled"}[5m]) /
+rate(scheduler_pod_scheduling_attempts_total[5m])
+
+# 待调度 Pod 数量
+scheduler_pending_pods
+
+# 调度器队列长度
+scheduler_queue_incoming_pods_total
+
+# 节点评分耗时
+histogram_quantile(0.95,
+  rate(scheduler_framework_extension_point_duration_seconds_bucket{
+    extension_point="Score"
+  }[5m])
+)
+```
+
+### 4.2 高级故障排查
+
+#### 4.2.1 调度器性能分析
+
+**使用 pprof 分析调度器性能：**
+
+```bash
+#!/bin/bash
+# scheduler-profiling.sh
+
+# 获取调度器 Pod 名称
+SCHEDULER_POD=$(kubectl get pods -n kube-system -l component=kube-scheduler -o jsonpath='{.items[0].metadata.name}')
+
+echo "调度器 Pod: $SCHEDULER_POD"
+
+# 端口转发
+echo "启动端口转发..."
+kubectl port-forward -n kube-system pod/$SCHEDULER_POD 10259:10259 &
+PORT_FORWARD_PID=$!
+
+# 等待端口转发就绪
+sleep 3
+
+# CPU 性能分析
+echo "收集 CPU 性能数据 (30秒)..."
+curl -s "http://localhost:10259/debug/pprof/profile?seconds=30" > scheduler-cpu.prof
+
+# 内存性能分析
+echo "收集内存性能数据..."
+curl -s "http://localhost:10259/debug/pprof/heap" > scheduler-heap.prof
+
+# Goroutine 分析
+echo "收集 Goroutine 数据..."
+curl -s "http://localhost:10259/debug/pprof/goroutine" > scheduler-goroutine.prof
+
+# 停止端口转发
+kill $PORT_FORWARD_PID
+
+echo "性能数据收集完成:"
+echo "  - CPU: scheduler-cpu.prof"
+echo "  - 内存: scheduler-heap.prof"
+echo "  - Goroutine: scheduler-goroutine.prof"
+echo ""
+echo "分析命令:"
+echo "  go tool pprof scheduler-cpu.prof"
+echo "  go tool pprof scheduler-heap.prof"
+echo "  go tool pprof scheduler-goroutine.prof"
+```
+
+**性能分析示例：**
+
+```bash
+# 分析 CPU 热点
+go tool pprof scheduler-cpu.prof
+(pprof) top 10
+(pprof) list <function_name>
+(pprof) web
+
+# 分析内存使用
+go tool pprof scheduler-heap.prof
+(pprof) top 10 -cum
+(pprof) list <function_name>
+
+# 分析 Goroutine 泄漏
+go tool pprof scheduler-goroutine.prof
+(pprof) top 10
+(pprof) traces
+```
+
+#### 4.2.2 调度失败深度分析
+
+**调度失败诊断工具：**
+
+```bash
+#!/bin/bash
+# scheduler-debug.sh
+
+# 诊断特定 Pod 的调度失败
+debug_pod_scheduling() {
+    local pod_name=$1
+    local namespace=${2:-"default"}
+    
+    echo "=== 诊断 Pod: $namespace/$pod_name ==="
+    
+    # 1. Pod 基本信息
+    echo "1. Pod 状态:"
+    kubectl get pod $pod_name -n $namespace -o wide
+    echo ""
+    
+    # 2. Pod 事件
+    echo "2. Pod 事件:"
+    kubectl describe pod $pod_name -n $namespace | grep -A 20 "Events:"
+    echo ""
+    
+    # 3. 资源需求分析
+    echo "3. 资源需求:"
+    kubectl get pod $pod_name -n $namespace -o jsonpath='
+    CPU 请求: {.spec.containers[*].resources.requests.cpu}
+    内存请求: {.spec.containers[*].resources.requests.memory}
+    CPU 限制: {.spec.containers[*].resources.limits.cpu}
+    内存限制: {.spec.containers[*].resources.limits.memory}
+    '
+    echo ""
+    
+    # 4. 节点选择器和亲和性
+    echo "4. 调度约束:"
+    kubectl get pod $pod_name -n $namespace -o yaml | grep -A 10 -E "(nodeSelector|affinity|tolerations)"
+    echo ""
+    
+    # 5. 可用节点分析
+    echo "5. 节点资源状态:"
+    kubectl top nodes
+    echo ""
+    
+    # 6. 节点污点检查
+    echo "6. 节点污点:"
+    kubectl get nodes -o custom-columns=NAME:.metadata.name,TAINTS:.spec.taints
+    echo ""
+    
+    # 7. 存储卷检查
+    echo "7. 存储卷状态:"
+    kubectl get pv,pvc -n $namespace
+    echo ""
+}
+
+# 集群调度健康检查
+cluster_scheduling_health() {
+    echo "=== 集群调度健康检查 ==="
+    
+    # 1. 调度器状态
+    echo "1. 调度器状态:"
+    kubectl get pods -n kube-system -l component=kube-scheduler
+    echo ""
+    
+    # 2. 节点状态
+    echo "2. 节点状态:"
+    kubectl get nodes -o wide
+    echo ""
+    
+    # 3. 待调度 Pod
+    echo "3. 待调度 Pod:"
+    kubectl get pods --all-namespaces --field-selector=status.phase=Pending
+    echo ""
+    
+    # 4. 资源配额
+    echo "4. 资源配额使用:"
+    kubectl get resourcequota --all-namespaces
+    echo ""
+    
+    # 5. 最近调度事件
+    echo "5. 最近调度事件:"
+    kubectl get events --all-namespaces --sort-by='.lastTimestamp' | \
+        grep -E "(Scheduled|FailedScheduling)" | tail -10
+    echo ""
+}
+
+# 调度性能分析
+scheduling_performance_analysis() {
+    echo "=== 调度性能分析 ==="
+    
+    # 1. 调度延迟统计
+    echo "1. 调度延迟分析:"
+    kubectl get events --all-namespaces -o json | jq -r '
+    .items[] |
+    select(.reason == "Scheduled") |
+    select(.firstTimestamp > (now - 3600)) |
+    {
+        pod: .involvedObject.name,
+        namespace: .involvedObject.namespace,
+        scheduled_time: .firstTimestamp,
+        message: .message
+    } |
+    "\(.namespace)/\(.pod): \(.scheduled_time)"
+    ' | head -20
+    echo ""
+    
+    # 2. 调度器指标
+    echo "2. 调度器指标 (如果可用):"
+    if kubectl get --raw /metrics 2>/dev/null | grep -q scheduler; then
+        kubectl get --raw /metrics | grep -E "scheduler_(scheduling_duration|pending_pods|queue)"
+    else
+        echo "调度器指标不可用"
+    fi
+    echo ""
+    
+    # 3. 节点资源碎片化分析
+    echo "3. 节点资源碎片化:"
+    kubectl describe nodes | grep -E "(Name:|Allocatable:|Allocated resources)" | \
+        awk '/Name:/ {node=$2} /Allocatable:/ {print "节点:", node} /cpu/ {print "  CPU:", $0} /memory/ {print "  内存:", $0}'
+    echo ""
+}
+
+# 主函数
+main() {
+    case "$1" in
+        "pod")
+            if [ -z "$2" ]; then
+                echo "用法: $0 pod <pod-name> [namespace]"
+                exit 1
+            fi
+            debug_pod_scheduling $2 $3
+            ;;
+        "health")
+            cluster_scheduling_health
+            ;;
+        "performance")
+            scheduling_performance_analysis
+            ;;
+        "all")
+            cluster_scheduling_health
+            echo ""
+            scheduling_performance_analysis
+            ;;
+        *)
+            echo "用法: $0 {pod|health|performance|all} [args...]"
+            echo "示例:"
+            echo "  $0 pod my-pod default    # 诊断特定 Pod"
+            echo "  $0 health               # 集群调度健康检查"
+            echo "  $0 performance          # 调度性能分析"
+            echo "  $0 all                  # 完整诊断"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
+```
+
+#### 4.2.3 调度器日志分析
+
+**日志分析脚本：**
+
+```bash
+#!/bin/bash
+# scheduler-log-analyzer.sh
+
+# 分析调度器日志中的错误模式
+analyze_scheduler_errors() {
+    local log_file=${1:-"/var/log/scheduler/scheduler.log"}
+    
+    echo "=== 调度器错误分析 ==="
+    
+    # 1. 错误统计
+    echo "1. 错误类型统计:"
+    grep -E "(ERROR|WARN|Failed)" $log_file | \
+        awk '{print $4}' | sort | uniq -c | sort -nr
+    echo ""
+    
+    # 2. 资源不足错误
+    echo "2. 资源不足错误:"
+    grep "Insufficient" $log_file | tail -10
+    echo ""
+    
+    # 3. 亲和性错误
+    echo "3. 亲和性约束错误:"
+    grep -E "(affinity|anti-affinity)" $log_file | tail -10
+    echo ""
+    
+    # 4. 污点容忍错误
+    echo "4. 污点容忍错误:"
+    grep "tolerate" $log_file | tail -10
+    echo ""
+    
+    # 5. 调度延迟警告
+    echo "5. 调度延迟警告:"
+    grep "scheduling.*took" $log_file | tail -10
+    echo ""
+}
+
+# 实时监控调度器日志
+monitor_scheduler_logs() {
+    local scheduler_pod=$(kubectl get pods -n kube-system -l component=kube-scheduler -o jsonpath='{.items[0].metadata.name}')
+    
+    echo "监控调度器日志: $scheduler_pod"
+    echo "按 Ctrl+C 停止监控"
+    echo ""
+    
+    kubectl logs -n kube-system $scheduler_pod -f | \
+        grep --line-buffered -E "(ERROR|WARN|Failed|Insufficient|affinity|tolerate)"
+}
+
+# 主函数
+main() {
+    case "$1" in
+        "analyze")
+            analyze_scheduler_errors $2
+            ;;
+        "monitor")
+            monitor_scheduler_logs
+            ;;
+        *)
+            echo "用法: $0 {analyze|monitor} [log-file]"
+            echo "示例:"
+            echo "  $0 analyze /var/log/scheduler.log"
+            echo "  $0 monitor"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
+```
+
+---
+
+## 5. 总结
+
+### 5.1 调度器核心概念回顾
 
 Kubernetes 调度器是一个复杂的**约束优化系统**，其核心概念包括：
 
@@ -1447,25 +2009,28 @@ Kubernetes 调度器是一个复杂的**约束优化系统**，其核心概念�
 - **多目标优化**：平衡资源利用率、负载均衡、服务质量等目标
 - **约束满足**：处理硬约束（过滤）和软约束（评分）
 
-### 4.2 调度理论要点
+### 5.2 调度理论要点
 
 1. **数学建模**：调度问题本质是约束优化问题
 2. **算法复杂度**：时间复杂度 O(N×F + M×S)，需要性能优化
 3. **多目标权衡**：通过帕累托最优实现目标平衡
 4. **公平性保证**：通过拓扑分散和反亲和性确保负载均衡
 
-### 4.3 实践指导原则
+### 5.3 实践指导原则
 
 - **理解约束层次**：硬约束（必须满足）vs 软约束（优化目标）
 - **合理配置权重**：根据业务需求调整评分插件权重
 - **监控调度性能**：关注调度延迟、成功率、资源利用率
 - **渐进式优化**：从默认配置开始，逐步优化调度策略
+- **审计监控**：实施调度决策的全面审计和监控机制
+- **性能分析**：使用 pprof 等工具深度分析调度器性能瓶颈
+- **故障诊断**：建立系统化的调度问题排查和分析流程
 
 通过深入理解这些概念和原理，可以更好地设计和优化 Kubernetes 集群的调度策略，提高应用性能和资源利用效率。
 
 ---
 
-## 5. 术语表
+## 6. 术语表
 
 ### A
 
