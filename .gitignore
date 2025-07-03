@@ -1,1 +1,35 @@
+# macOS
 .DS_Store
+
+# 构建产物
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go 构建产物
+*.test
+*.out
+coverage.out
+coverage.html
+
+# 临时文件
+*.log
+nohup.out
+*.tmp
+*.temp
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 测试结果
+test-results/
+
+# 配置文件（如果包含敏感信息）
+# config.yaml
+# secrets.yaml
