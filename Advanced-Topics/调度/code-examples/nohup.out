@@ -1,0 +1,9 @@
+I0703 10:54:28.734032   56602 main.go:635] Starting Kubernetes Cluster Resource Heatmap Generator...
+I0703 10:54:28.735320   56602 main.go:682] Starting HTTP server on :8082
+I0703 10:54:28.735329   56602 main.go:683] Access the heatmap at http://localhost:8082
+I0703 10:55:25.158524   57603 main.go:635] Starting Kubernetes Cluster Resource Heatmap Generator...
+I0703 10:55:25.160629   57603 main.go:682] Starting HTTP server on :8082
+I0703 10:55:25.160646   57603 main.go:683] Access the heatmap at http://localhost:8082
+I0703 10:57:26.032703   59251 main.go:636] Starting Kubernetes Cluster Resource Heatmap Generator...
+I0703 10:57:26.032920   59251 main.go:683] Starting HTTP server on :8082
+I0703 10:57:26.032927   59251 main.go:684] Access the heatmap at http://localhost:8082

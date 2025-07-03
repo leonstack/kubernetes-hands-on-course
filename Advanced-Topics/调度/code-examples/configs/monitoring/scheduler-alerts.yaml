@@ -1,0 +1,147 @@
+# scheduler-alerts.yaml
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scheduler-alerts
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+spec:
+  groups:
+  - name: scheduler.performance
+    interval: 30s
+    rules:
+    - alert: SchedulerHighLatency
+      expr: histogram_quantile(0.95, sum(rate(scheduler_scheduling_latency_seconds_bucket[5m])) by (le)) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Scheduler latency is high"
+        description: "95th percentile scheduling latency is {{ $value }}s, which exceeds the threshold of 100ms"
+        runbook_url: "https://runbooks.example.com/scheduler-high-latency"
+    
+    - alert: SchedulerVeryHighLatency
+      expr: histogram_quantile(0.95, sum(rate(scheduler_scheduling_latency_seconds_bucket[5m])) by (le)) > 0.5
+      for: 1m
+      labels:
+        severity: critical
+        component: scheduler
+      annotations:
+        summary: "Scheduler latency is very high"
+        description: "95th percentile scheduling latency is {{ $value }}s, which is critically high"
+        runbook_url: "https://runbooks.example.com/scheduler-very-high-latency"
+    
+    - alert: SchedulerHighFailureRate
+      expr: |
+        (
+          sum(rate(scheduler_scheduling_failures_total[5m]))
+          /
+          sum(rate(scheduler_scheduling_attempts_total[5m]))
+        ) > 0.05
+      for: 3m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Scheduler failure rate is high"
+        description: "Scheduler failure rate is {{ $value | humanizePercentage }}, which exceeds 5%"
+        runbook_url: "https://runbooks.example.com/scheduler-high-failure-rate"
+    
+    - alert: SchedulerDown
+      expr: up{job="kube-scheduler"} == 0
+      for: 1m
+      labels:
+        severity: critical
+        component: scheduler
+      annotations:
+        summary: "Scheduler is down"
+        description: "Scheduler instance {{ $labels.instance }} is down"
+        runbook_url: "https://runbooks.example.com/scheduler-down"
+  
+  - name: scheduler.queue
+    interval: 30s
+    rules:
+    - alert: SchedulerQueueTooLarge
+      expr: scheduler_pending_pods > 100
+      for: 5m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Scheduler queue is too large"
+        description: "There are {{ $value }} pending pods in the scheduler queue"
+        runbook_url: "https://runbooks.example.com/scheduler-queue-large"
+    
+    - alert: SchedulerQueueGrowthRate
+      expr: increase(scheduler_pending_pods[10m]) > 50
+      for: 2m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Scheduler queue is growing rapidly"
+        description: "Scheduler queue has grown by {{ $value }} pods in the last 10 minutes"
+        runbook_url: "https://runbooks.example.com/scheduler-queue-growth"
+  
+  - name: scheduler.resources
+    interval: 60s
+    rules:
+    - alert: NodeResourceFragmentation
+      expr: avg(scheduler_resource_fragmentation_ratio) by (resource) > 0.3
+      for: 10m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "High resource fragmentation detected"
+        description: "{{ $labels.resource }} fragmentation is {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.example.com/resource-fragmentation"
+    
+    - alert: ClusterResourceUtilizationLow
+      expr: avg(scheduler_node_utilization_ratio) by (resource) < 0.2
+      for: 30m
+      labels:
+        severity: info
+        component: scheduler
+      annotations:
+        summary: "Low cluster resource utilization"
+        description: "{{ $labels.resource }} utilization is {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.example.com/low-utilization"
+    
+    - alert: ClusterResourceUtilizationHigh
+      expr: avg(scheduler_node_utilization_ratio) by (resource) > 0.85
+      for: 5m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "High cluster resource utilization"
+        description: "{{ $labels.resource }} utilization is {{ $value | humanizePercentage }}"
+        runbook_url: "https://runbooks.example.com/high-utilization"
+  
+  - name: scheduler.plugins
+    interval: 30s
+    rules:
+    - alert: SchedulerPluginErrors
+      expr: increase(scheduler_plugin_errors_total[5m]) > 10
+      for: 2m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Scheduler plugin errors detected"
+        description: "Plugin {{ $labels.plugin }} has {{ $value }} errors in the last 5 minutes"
+        runbook_url: "https://runbooks.example.com/plugin-errors"
+    
+    - alert: SchedulerPluginSlowExecution
+      expr: histogram_quantile(0.95, sum(rate(scheduler_plugin_execution_time_seconds_bucket[5m])) by (le, plugin)) > 0.01
+      for: 5m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Scheduler plugin execution is slow"
+        description: "Plugin {{ $labels.plugin }} 95th percentile execution time is {{ $value }}s"
+        runbook_url: "https://runbooks.example.com/plugin-slow"

@@ -1,0 +1,223 @@
+# edge-scheduler-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: edge-scheduler-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    edgeZones:
+      - name: "edge-zone-east"
+        location:
+          latitude: 40.7128
+          longitude: -74.0060
+          region: "us-east"
+          country: "US"
+        connectivity:
+          latency: "10ms"
+          bandwidth: 1000
+          reliability: 0.99
+          jitter: "2ms"
+        resources:
+          totalCPU: 1000
+          totalMemory: 4096
+          totalStorage: 1024
+      - name: "edge-zone-west"
+        location:
+          latitude: 37.7749
+          longitude: -122.4194
+          region: "us-west"
+          country: "US"
+        connectivity:
+          latency: "15ms"
+          bandwidth: 500
+          reliability: 0.95
+          jitter: "5ms"
+        resources:
+          totalCPU: 800
+          totalMemory: 3072
+          totalStorage: 512
+      - name: "edge-zone-europe"
+        location:
+          latitude: 51.5074
+          longitude: -0.1278
+          region: "eu-west"
+          country: "UK"
+        connectivity:
+          latency: "25ms"
+          bandwidth: 300
+          reliability: 0.92
+          jitter: "8ms"
+        resources:
+          totalCPU: 600
+          totalMemory: 2048
+          totalStorage: 256
+    scoring:
+      weights:
+        latency: 30
+        bandwidth: 25
+        reliability: 20
+        resource: 15
+        location: 10
+      thresholds:
+        maxLatency: "100ms"
+        minBandwidth: 10
+        minReliability: 0.8
+    nodeSelection:
+      filterRules:
+        - type: "edge-zone-match"
+          enabled: true
+        - type: "latency-check"
+          enabled: true
+        - type: "bandwidth-check"
+          enabled: true
+        - type: "reliability-check"
+          enabled: true
+        - type: "resource-availability"
+          enabled: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-scheduler
+  namespace: kube-system
+  labels:
+    app: edge-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge-scheduler
+  template:
+    metadata:
+      labels:
+        app: edge-scheduler
+    spec:
+      serviceAccountName: edge-scheduler
+      containers:
+      - name: edge-scheduler
+        image: k8s.gcr.io/edge-scheduler:v1.0.0
+        command:
+        - /usr/local/bin/edge-scheduler
+        args:
+        - --config=/etc/kubernetes/edge-scheduler-config.yaml
+        - --v=2
+        - --leader-elect=true
+        - --leader-elect-lease-duration=15s
+        - --leader-elect-renew-deadline=10s
+        - --leader-elect-retry-period=2s
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 300m
+            memory: 256Mi
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kubernetes
+          readOnly: true
+        env:
+        - name: EDGE_ZONE_DISCOVERY
+          value: "auto"
+        - name: METRICS_UPDATE_INTERVAL
+          value: "30s"
+        - name: NODE_METRICS_CACHE_TTL
+          value: "5m"
+        - name: SCHEDULING_ALGORITHM
+          value: "weighted-scoring"
+        ports:
+        - containerPort: 10259
+          name: secure-port
+          protocol: TCP
+        - containerPort: 10251
+          name: http-port
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10251
+            scheme: HTTP
+          initialDelaySeconds: 15
+          timeoutSeconds: 15
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10251
+            scheme: HTTP
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+      volumes:
+      - name: config
+        configMap:
+          name: edge-scheduler-config
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: edge-scheduler
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: edge-scheduler
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods/binding"]
+  verbs: ["create"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["create", "get", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: edge-scheduler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edge-scheduler
+subjects:
+- kind: ServiceAccount
+  name: edge-scheduler
+  namespace: kube-system
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge-scheduler
+  namespace: kube-system
+  labels:
+    app: edge-scheduler
+spec:
+  selector:
+    app: edge-scheduler
+  ports:
+  - name: secure-port
+    port: 10259
+    targetPort: 10259
+    protocol: TCP
+  - name: http-port
+    port: 10251
+    targetPort: 10251
+    protocol: TCP
+  type: ClusterIP

@@ -1,0 +1,117 @@
+# rbac.yaml - RBAC configuration for scheduler tools
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scheduler-tools
+  namespace: kube-system
+  labels:
+    component: scheduler-tools
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scheduler-tools
+  labels:
+    component: scheduler-tools
+rules:
+# Core resources
+- apiGroups: [""]
+  resources: ["nodes", "pods", "services", "endpoints", "namespaces"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list", "watch", "create"]
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch"]
+# Resource quotas and limits
+- apiGroups: [""]
+  resources: ["resourcequotas", "limitranges"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+# Apps resources
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets", "daemonsets", "statefulsets"]
+  verbs: ["get", "list", "watch"]
+# Metrics
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+# Custom metrics
+- apiGroups: ["custom.metrics.k8s.io"]
+  resources: ["*"]
+  verbs: ["get", "list"]
+# Scheduling
+- apiGroups: ["scheduling.k8s.io"]
+  resources: ["priorityclasses"]
+  verbs: ["get", "list", "watch"]
+# Storage
+- apiGroups: ["storage.k8s.io"]
+  resources: ["storageclasses", "volumeattachments"]
+  verbs: ["get", "list", "watch"]
+# Policy
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["get", "list", "watch"]
+# Coordination (for leader election)
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Node metrics and status
+- apiGroups: [""]
+  resources: ["nodes/status", "nodes/metrics"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scheduler-tools
+  labels:
+    component: scheduler-tools
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scheduler-tools
+subjects:
+- kind: ServiceAccount
+  name: scheduler-tools
+  namespace: kube-system
+---
+# Additional role for tenant resource management
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scheduler-tools-tenant-manager
+  labels:
+    component: scheduler-tools
+rules:
+# Namespace management
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["get", "list", "watch", "create", "update", "patch"]
+# Resource quota management
+- apiGroups: [""]
+  resources: ["resourcequotas"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Limit range management
+- apiGroups: [""]
+  resources: ["limitranges"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+# Network policy management
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scheduler-tools-tenant-manager
+  labels:
+    component: scheduler-tools
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scheduler-tools-tenant-manager
+subjects:
+- kind: ServiceAccount
+  name: scheduler-tools
+  namespace: kube-system

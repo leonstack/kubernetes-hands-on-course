@@ -1,0 +1,88 @@
+# edge-workload-example.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iot-data-processor
+  namespace: edge-apps
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: iot-data-processor
+  template:
+    metadata:
+      labels:
+        app: iot-data-processor
+      annotations:
+        scheduler.kubernetes.io/edge-zone: "edge-zone-east"
+        scheduler.kubernetes.io/max-latency: "20ms"
+        scheduler.kubernetes.io/min-bandwidth: "100"
+        scheduler.kubernetes.io/min-reliability: "0.95"
+    spec:
+      schedulerName: edge-scheduler
+      containers:
+      - name: processor
+        image: iot-processor:v1.0.0
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        env:
+        - name: EDGE_ZONE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['scheduler.kubernetes.io/edge-zone']
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: node.kubernetes.io/instance-type
+                operator: In
+                values: ["edge"]
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node.kubernetes.io/edge-zone
+                operator: In
+                values: ["edge-zone-east"]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: real-time-analytics
+  namespace: edge-apps
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: real-time-analytics
+  template:
+    metadata:
+      labels:
+        app: real-time-analytics
+      annotations:
+        scheduler.kubernetes.io/max-latency: "10ms"
+        scheduler.kubernetes.io/min-bandwidth: "500"
+        scheduler.kubernetes.io/min-reliability: "0.98"
+    spec:
+      schedulerName: edge-scheduler
+      containers:
+      - name: analytics
+        image: real-time-analytics:v2.0.0
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
+      tolerations:
+      - key: "edge-node"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"

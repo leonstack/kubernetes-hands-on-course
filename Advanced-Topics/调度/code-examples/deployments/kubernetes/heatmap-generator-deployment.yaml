@@ -1,0 +1,118 @@
+# heatmap-generator-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heatmap-generator
+  namespace: kube-system
+  labels:
+    app: heatmap-generator
+    component: scheduler-tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: heatmap-generator
+  template:
+    metadata:
+      labels:
+        app: heatmap-generator
+        component: scheduler-tools
+    spec:
+      serviceAccountName: scheduler-tools
+      containers:
+      - name: heatmap-generator
+        image: scheduler-tools/heatmap-generator:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8082
+          name: http
+        - containerPort: 8081
+          name: metrics
+        args:
+        - "--port=$(HTTP_PORT)"
+        env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: METRICS_PORT
+          value: "8081"
+        - name: HTTP_PORT
+          value: "8082"
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "200m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8082
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: heatmap-generator-config
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: heatmap-generator
+  namespace: kube-system
+  labels:
+    app: heatmap-generator
+    component: scheduler-tools
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8082
+    targetPort: 8082
+    protocol: TCP
+    name: http
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: metrics
+  selector:
+    app: heatmap-generator
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: heatmap-generator-config
+  namespace: kube-system
+  labels:
+    app: heatmap-generator
+    component: scheduler-tools
+data:
+  config.yaml: |
+    log_level: info
+    metrics_port: 8081
+    health_port: 8082
+    timeout: 30s
+    heatmap:
+      update_interval: 30s
+      grid_size: 20
+      color_scheme: "viridis"
+      enable_animation: true
+    resources:
+      - cpu
+      - memory
+      - pods

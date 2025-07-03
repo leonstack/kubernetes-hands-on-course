@@ -1,0 +1,117 @@
+# tenant-resource-manager-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tenant-resource-manager
+  namespace: kube-system
+  labels:
+    app: tenant-resource-manager
+    component: scheduler-tools
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tenant-resource-manager
+  template:
+    metadata:
+      labels:
+        app: tenant-resource-manager
+        component: scheduler-tools
+    spec:
+      serviceAccountName: scheduler-tools
+      containers:
+      - name: tenant-resource-manager
+        image: scheduler-tools/tenant-resource-manager:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 8081
+          name: metrics
+        env:
+        - name: LOG_LEVEL
+          value: "info"
+        - name: METRICS_PORT
+          value: "8081"
+        - name: HTTP_PORT
+          value: "8080"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: tenant-resource-manager-config
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tenant-resource-manager
+  namespace: kube-system
+  labels:
+    app: tenant-resource-manager
+    component: scheduler-tools
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  - port: 8081
+    targetPort: 8081
+    protocol: TCP
+    name: metrics
+  selector:
+    app: tenant-resource-manager
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tenant-resource-manager-config
+  namespace: kube-system
+  labels:
+    app: tenant-resource-manager
+    component: scheduler-tools
+data:
+  config.yaml: |
+    log_level: info
+    metrics_port: 8081
+    health_port: 8080
+    timeout: 30s
+    tenant_management:
+      enable_auto_registration: true
+      quota_enforcement: strict
+      burst_allowance: 1.2
+      monitoring_interval: 30s
+    default_quotas:
+      cpu: "1000m"
+      memory: "2Gi"
+      pods: "10"
+      storage: "10Gi"

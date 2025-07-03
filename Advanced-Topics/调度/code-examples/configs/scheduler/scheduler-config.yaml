@@ -1,0 +1,105 @@
+# scheduler-config.yaml
+# 生产级调度器配置文件 - 优化性能和可靠性
+apiVersion: kubescheduler.config.k8s.io/v1beta3
+kind: KubeSchedulerConfiguration
+# 客户端连接配置 - 与API服务器通信参数
+clientConnection:
+  kubeconfig: /etc/kubernetes/scheduler.conf  # kubeconfig文件路径
+  qps: 100      # 每秒查询数限制，适用于中大型集群
+  burst: 200    # 突发请求数，处理流量峰值
+# Leader选举配置 - 确保高可用性
+leaderElection:
+  leaderElect: true           # 启用leader选举机制
+  leaseDuration: 15s          # lease持续时间，leader失效检测时间
+  renewDeadline: 10s          # 续约截止时间，必须小于leaseDuration
+  retryPeriod: 2s             # 重试间隔，leader选举失败后的重试频率
+  resourceLock: leases        # 使用lease资源作为锁机制
+  resourceName: kube-scheduler      # 锁资源名称
+  resourceNamespace: kube-system    # 锁资源所在命名空间
+# 调度器配置文件 - 定义调度行为和策略
+profiles:
+- schedulerName: default-scheduler  # 调度器名称，Pod可通过此名称指定调度器
+  plugins:
+    # 预选（Filter）插件配置 - 过滤不符合条件的节点
+    filter:
+      enabled:
+      - name: NodeResourcesFit      # 检查节点资源是否满足Pod需求
+      - name: NodeAffinity          # 处理节点亲和性规则
+      - name: PodTopologySpread     # 确保Pod在拓扑域间均匀分布
+      - name: TaintToleration       # 处理节点污点和Pod容忍度
+      - name: VolumeRestrictions    # 检查存储卷限制
+      - name: VolumeBinding         # 处理存储卷绑定
+      - name: VolumeZone           # 检查存储卷可用区限制
+      - name: PodOverhead          # 考虑Pod运行时开销
+      - name: NodePorts            # 检查NodePort端口冲突
+      disabled:
+      - name: NodeUnschedulable  # 生产环境中可能需要禁用，允许调度到标记为不可调度的节点
+    # 优选（Score）插件配置 - 为通过预选的节点打分
+    score:
+      enabled:
+      - name: NodeResourcesFit      # 基于资源利用率打分
+        weight: 1                   # 权重设置，影响最终得分
+      - name: NodeAffinity          # 基于节点亲和性打分
+        weight: 2                   # 较高权重，优先考虑亲和性
+      - name: PodTopologySpread     # 基于拓扑分布打分
+        weight: 2                   # 确保负载均衡
+      - name: InterPodAffinity      # 基于Pod间亲和性打分
+        weight: 2                   # 考虑Pod之间的关系
+      - name: NodePreferAvoidPods   # 避免调度到特定节点
+        weight: 10000               # 最高权重，强制避免
+      - name: TaintToleration       # 基于污点容忍度打分
+        weight: 1
+      - name: ImageLocality         # 基于镜像本地性打分
+        weight: 1                   # 优先选择已有镜像的节点
+    # 预留（Reserve）插件 - 为Pod预留资源
+    reserve:
+      enabled:
+      - name: VolumeBinding         # 预留存储卷资源
+    # 预绑定（PreBind）插件 - 在绑定前执行操作
+    preBind:
+      enabled:
+      - name: VolumeBinding         # 在绑定前准备存储卷
+  # 插件详细配置
+  pluginConfig:
+  # 资源适配插件详细配置
+  - name: NodeResourcesFit
+    args:
+      scoringStrategy:
+        type: LeastAllocated        # 优先选择资源利用率低的节点
+        resources:
+        - name: cpu
+          weight: 1                 # CPU资源权重
+        - name: memory
+          weight: 1                 # 内存资源权重
+        - name: nvidia.com/gpu
+          weight: 5                 # GPU权重更高，优先考虑GPU资源分配
+  # Pod拓扑分布详细配置
+  - name: PodTopologySpread
+    args:
+      defaultConstraints:
+      - maxSkew: 1                                    # 最大偏差值
+        topologyKey: topology.kubernetes.io/zone     # 按可用区分布
+        whenUnsatisfiable: ScheduleAnyway            # 无法满足时仍然调度
+      - maxSkew: 1                                    # 最大偏差值
+        topologyKey: kubernetes.io/hostname          # 按主机名分布
+        whenUnsatisfiable: ScheduleAnyway            # 确保高可用性
+      defaultingType: List                           # 使用列表模式应用约束
+  # Pod间亲和性详细配置
+  - name: InterPodAffinity
+    args:
+      hardPodAffinityWeight: 100                     # 硬亲和性权重
+  # 节点亲和性详细配置
+  - name: NodeAffinity
+    args:
+      addedAffinity:                                 # 额外添加的亲和性规则
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+          - matchExpressions:
+            - key: kubernetes.io/arch                # 架构选择
+              operator: In
+              values:
+              - amd64                                # 支持x86_64架构
+              - arm64                                # 支持ARM64架构
+# 全局性能调优配置
+percentageOfNodesToScore: 50  # 只对50%的节点进行评分，平衡性能和调度质量
+parallelism: 16              # 并行度设置，适用于大集群提高调度吞吐量

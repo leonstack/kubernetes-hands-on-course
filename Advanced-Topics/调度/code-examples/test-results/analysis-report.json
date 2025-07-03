@@ -1,0 +1,81 @@
+{
+  "timestamp": "2025-07-03T11:38:52.064626+08:00",
+  "performance_metrics": {
+    "average_scheduling_latency": 50000000,
+    "p95_scheduling_latency": 200000000,
+    "p99_scheduling_latency": 500000000,
+    "scheduling_throughput": 100,
+    "failure_rate": 0.02,
+    "queue_length": 10,
+    "plugin_performance": {
+      "NodeAffinity": 3000000,
+      "NodeResourcesFit": 5000000,
+      "PodTopologySpread": 8000000,
+      "TaintToleration": 2000000
+    }
+  },
+  "resource_analysis": {
+    "cluster_utilization": {
+      "cpu": 0.13125,
+      "memory": 0.06410258351949313
+    },
+    "node_utilization": {
+      "docker-desktop": {
+        "cpu": 0.13125,
+        "memory": 0.06410258351949313
+      }
+    },
+    "resource_waste": {
+      "cpu": 0.86875,
+      "memory": 0.9358974164805068
+    },
+    "fragmentation": {
+      "cpu": 0,
+      "memory": 0
+    },
+    "hot_spots": [],
+    "underutilized_nodes": [
+      "docker-desktop"
+    ]
+  },
+  "scheduling_issues": [
+    {
+      "type": "HighFailureRate",
+      "severity": "Medium",
+      "description": "Scheduling failure rate is 5.00%, which exceeds the threshold of 3%",
+      "affected_pods": null,
+      "timestamp": "2025-07-03T11:38:52.10395+08:00",
+      "count": 1
+    }
+  ],
+  "recommendations": [
+    {
+      "category": "Performance",
+      "priority": "High",
+      "title": "Optimize Scheduling Latency",
+      "description": "95th percentile scheduling latency is above 100ms",
+      "action": "Consider tuning scheduler configuration or reducing plugin complexity",
+      "impact": "Improved pod startup time and user experience"
+    },
+    {
+      "category": "Resource Optimization",
+      "priority": "Medium",
+      "title": "Improve CPU Utilization",
+      "description": "Cluster CPU utilization is below 30%",
+      "action": "Consider consolidating workloads or scaling down cluster",
+      "impact": "Reduced infrastructure costs"
+    }
+  ],
+  "trend_analysis": {
+    "latency_trend": "insufficient_data",
+    "throughput_trend": "insufficient_data",
+    "utilization_trend": "stable",
+    "predicted_issues": [],
+    "capacity_forecast": {
+      "cpu_utilization_forecast": 0.14437500000000003,
+      "cpu_weeks_remaining": 20,
+      "memory_utilization_forecast": 0.07051284187144245,
+      "memory_weeks_remaining": 30
+    }
+  }
+}

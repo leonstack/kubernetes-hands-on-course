@@ -1,0 +1,143 @@
+# 高性能调度器配置
+apiVersion: kubescheduler.config.k8s.io/v1beta3
+kind: KubeSchedulerConfiguration
+metadata:
+  name: high-performance-scheduler
+profiles:
+- schedulerName: high-performance-scheduler
+  plugins:
+    # 启用的过滤插件
+    filter:
+      enabled:
+      - name: NodeResourcesFit
+      - name: NodeAffinity
+      - name: PodTopologySpread
+      - name: TaintToleration
+      - name: NodePorts
+      - name: NodeUnschedulable
+      - name: VolumeRestrictions
+      - name: EBSLimits
+      - name: GCEPDLimits
+      - name: NodeVolumeLimits
+      - name: AzureDiskLimits
+      - name: VolumeBinding
+      - name: VolumeZone
+      - name: PodOverhead
+      - name: InterPodAffinity
+      disabled:
+      - name: NodeResourcesLeastAllocated  # 禁用以提高性能
+    
+    # 启用的评分插件
+    score:
+      enabled:
+      - name: NodeResourcesFit
+        weight: 1
+      - name: NodeAffinity
+        weight: 2
+      - name: PodTopologySpread
+        weight: 2
+      - name: InterPodAffinity
+        weight: 2
+      - name: NodeResourcesLeastAllocated
+        weight: 1
+      - name: ImageLocality
+        weight: 1
+      - name: TaintToleration
+        weight: 1
+      disabled:
+      - name: NodeResourcesBalancedAllocation  # 禁用以提高性能
+    
+    # 预过滤插件
+    preFilter:
+      enabled:
+      - name: NodeResourcesFit
+      - name: NodePorts
+      - name: VolumeRestrictions
+      - name: EBSLimits
+      - name: GCEPDLimits
+      - name: NodeVolumeLimits
+      - name: AzureDiskLimits
+      - name: VolumeBinding
+      - name: InterPodAffinity
+      - name: PodTopologySpread
+    
+    # 预评分插件
+    preScore:
+      enabled:
+      - name: InterPodAffinity
+      - name: PodTopologySpread
+      - name: TaintToleration
+    
+    # 绑定插件
+    bind:
+      enabled:
+      - name: DefaultBinder
+  
+  # 插件配置
+  pluginConfig:
+  - name: NodeResourcesFit
+    args:
+      scoringStrategy:
+        type: LeastAllocated
+        resources:
+        - name: cpu
+          weight: 1
+        - name: memory
+          weight: 1
+  
+  - name: PodTopologySpread
+    args:
+      defaultConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+  
+  - name: InterPodAffinity
+    args:
+      hardPodAffinityWeight: 100
+  
+  - name: VolumeBinding
+    args:
+      bindTimeoutSeconds: 600
+
+# 性能优化参数
+parallelism: 16  # 并行处理的 goroutine 数量
+percentageOfNodesToScore: 50  # 评分的节点百分比
+
+# 客户端连接配置
+clientConnection:
+  kubeconfig: "/etc/kubernetes/scheduler.conf"
+  acceptContentTypes: "application/vnd.kubernetes.protobuf,application/json"
+  contentType: "application/vnd.kubernetes.protobuf"
+  qps: 100
+  burst: 200
+
+# Leader 选举配置
+leaderElection:
+  leaderElect: true
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
+  resourceLock: leases
+  resourceName: high-performance-scheduler
+  resourceNamespace: kube-system
+
+# 健康检查和指标
+healthzBindAddress: 0.0.0.0:10251
+metricsBindAddress: 0.0.0.0:10251
+
+# 日志配置
+logging:
+  format: json
+  flushFrequency: 5s
+  verbosity: 2
+  options:
+    json:
+      infoBufferSize: "0"
+
+# 调试配置
+enableProfiling: true
+enableContentionProfiling: true

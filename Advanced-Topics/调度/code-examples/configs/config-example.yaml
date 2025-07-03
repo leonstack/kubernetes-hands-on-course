@@ -1,0 +1,477 @@
+# config-example.yaml
+# Kubernetes 调度器高级实践工具配置示例
+
+# 全局配置
+global:
+  # 日志级别: debug, info, warn, error
+  log_level: info
+  
+  # 指标收集间隔
+  metrics_interval: 30s
+  
+  # 数据保留期
+  retention_period: 24h
+  
+  # Kubernetes API 配置
+  kubernetes:
+    # kubeconfig 文件路径 (留空使用集群内配置)
+    kubeconfig: ""
+    
+    # API 服务器地址 (留空自动发现)
+    api_server: ""
+    
+    # 请求超时
+    timeout: 30s
+    
+    # QPS 限制
+    qps: 50
+    
+    # 突发请求限制
+    burst: 100
+
+# 多租户资源管理器配置
+tenant_resource_manager:
+  # 启用状态
+  enabled: true
+  
+  # 监听端口
+  port: 8080
+  
+  # 默认租户配置
+  default_tenant:
+    # 默认优先级
+    priority: 100
+    
+    # 默认策略
+    policies:
+      allow_burstable: true
+      max_burst_ratio: 1.5
+      preemption_policy: "LowerPriority"
+      scheduling_policy: "BestEffort"
+  
+  # 系统资源预留
+  system_reserved:
+    cpu: "1"
+    memory: "2Gi"
+    storage: "10Gi"
+  
+  # 告警配置
+  alerts:
+    # 配额使用率告警阈值
+    quota_usage_threshold: 0.8
+    
+    # 违规告警
+    violation_alerts: true
+    
+    # Webhook 地址
+    webhook_url: "http://alertmanager:9093/api/v1/alerts"
+
+# 调度器安全审计分析器配置
+scheduler_audit_analyzer:
+  # 启用状态
+  enabled: true
+  
+  # 监听端口
+  port: 8081
+  
+  # 审计日志配置
+  audit_log:
+    # 审计日志文件路径
+    file_path: "/var/log/audit/audit.log"
+    
+    # 日志格式: json, legacy
+    format: "json"
+    
+    # 监控模式: file, webhook
+    mode: "file"
+    
+    # 文件监控间隔
+    watch_interval: 10s
+  
+  # 安全检测配置
+  security:
+    # 允许的源 IP 范围
+    allowed_source_ips:
+      - "10.0.0.0/8"
+      - "172.16.0.0/12"
+      - "192.168.0.0/16"
+    
+    # 授权的调度器用户
+    authorized_schedulers:
+      - "system:kube-scheduler"
+      - "system:serviceaccount:kube-system:default-scheduler"
+    
+    # 有效的用户代理模式
+    valid_user_agents:
+      - "kube-scheduler/*"
+      - "kubectl/*"
+    
+    # 异常检测阈值
+    anomaly_thresholds:
+      # 调度延迟异常阈值 (毫秒)
+      latency_threshold: 1000
+      
+      # 失败率异常阈值
+      failure_rate_threshold: 0.1
+  
+  # 分析配置
+  analysis:
+    # 分析窗口大小
+    window_size: 1h
+    
+    # 分析间隔
+    interval: 5m
+    
+    # 保留历史分析结果数量
+    max_results: 100
+
+# 调度决策可视化工具配置
+scheduler_visualizer:
+  # 启用状态
+  enabled: true
+  
+  # 监听端口
+  port: 8082
+  
+  # 数据收集配置
+  collection:
+    # 收集间隔
+    interval: 1m
+    
+    # 模拟数据 (开发/测试用)
+    simulate_data: true
+    
+    # 最大决策记录数
+    max_decisions: 1000
+  
+  # 可视化配置
+  visualization:
+    # 图表刷新间隔
+    refresh_interval: 30s
+    
+    # 显示的时间范围
+    time_range: 1h
+    
+    # 图表类型
+    chart_types:
+      - "flowchart"
+      - "timeline"
+      - "statistics"
+  
+  # 性能配置
+  performance:
+    # 启用缓存
+    enable_cache: true
+    
+    # 缓存 TTL
+    cache_ttl: 5m
+    
+    # 最大并发请求
+    max_concurrent_requests: 10
+
+# 集群资源热力图生成器配置
+heatmap_generator:
+  # 启用状态
+  enabled: true
+  
+  # 监听端口
+  port: 8083
+  
+  # 数据源配置
+  data_source:
+    # 指标来源: metrics-server, prometheus, simulate
+    source: "metrics-server"
+    
+    # Prometheus 配置 (如果使用 prometheus 作为数据源)
+    prometheus:
+      url: "http://prometheus:9090"
+      timeout: 30s
+    
+    # 数据更新间隔
+    update_interval: 30s
+  
+  # 热力图配置
+  heatmap:
+    # 颜色方案: viridis, plasma, inferno, magma
+    color_scheme: "viridis"
+    
+    # 网格大小
+    grid_size: 20
+    
+    # 显示标签
+    show_labels: true
+    
+    # 工具提示
+    enable_tooltip: true
+  
+  # 集群配置
+  cluster:
+    # 节点标签过滤器
+    node_selector:
+      kubernetes.io/os: linux
+    
+    # 排除的节点
+    exclude_nodes:
+      - "master-node"
+    
+    # 资源阈值
+    thresholds:
+      cpu_high: 0.8
+      cpu_medium: 0.6
+      memory_high: 0.8
+      memory_medium: 0.6
+
+# 调度性能趋势分析器配置
+performance_analyzer:
+  # 启用状态
+  enabled: true
+  
+  # 监听端口
+  port: 8084
+  
+  # 分析配置
+  analysis:
+    # 分析窗口
+    window: 1h
+    
+    # 收集间隔
+    collection_interval: 1m
+    
+    # 异常检测阈值
+    anomaly_thresholds:
+      latency_high: 200.0
+      latency_critical: 500.0
+      throughput_low: 30.0
+      success_rate_low: 95.0
+      success_rate_critical: 90.0
+  
+  # 指标配置
+  metrics:
+    # 启用的收集器
+    enabled_collectors:
+      - scheduling_latency
+      - throughput
+      - success_rate
+      - queue_length
+      - node_utilization
+      - filter_latency
+      - score_latency
+      - bind_latency
+    
+    # 指标聚合
+    aggregation:
+      # 聚合间隔
+      interval: 5m
+      
+      # 聚合函数: avg, max, min, p95, p99
+      functions:
+        - avg
+        - p95
+        - p99
+  
+  # 预测配置
+  prediction:
+    # 启用预测
+    enabled: true
+    
+    # 预测算法: linear, exponential
+    algorithm: "linear"
+    
+    # 预测时间范围
+    horizon: 30m
+    
+    # 最小历史数据点
+    min_data_points: 10
+  
+  # 告警配置
+  alerts:
+    # 启用告警
+    enabled: true
+    
+    # 告警规则
+    rules:
+      - name: "high_latency"
+        condition: "avg_latency > 200"
+        severity: "warning"
+        duration: "5m"
+      
+      - name: "critical_latency"
+        condition: "avg_latency > 500"
+        severity: "critical"
+        duration: "2m"
+      
+      - name: "low_throughput"
+        condition: "throughput < 30"
+        severity: "warning"
+        duration: "5m"
+    
+    # 通知配置
+    notifications:
+      webhook_url: "http://alertmanager:9093/api/v1/alerts"
+      slack_webhook: ""
+      email_smtp:
+        server: ""
+        port: 587
+        username: ""
+        password: ""
+        from: ""
+        to: []
+
+# 存储配置
+storage:
+  # 存储类型: memory, file, database
+  type: "memory"
+  
+  # 文件存储配置
+  file:
+    # 数据目录
+    data_dir: "/data"
+    
+    # 文件格式: json, csv
+    format: "json"
+    
+    # 压缩: none, gzip
+    compression: "gzip"
+  
+  # 数据库存储配置
+  database:
+    # 数据库类型: sqlite, postgres, mysql
+    type: "sqlite"
+    
+    # 连接字符串
+    connection_string: "file:/data/scheduler-tools.db"
+    
+    # 连接池配置
+    pool:
+      max_open_conns: 10
+      max_idle_conns: 5
+      conn_max_lifetime: 1h
+  
+  # 数据保留策略
+  retention:
+    # 保留期
+    period: 24h
+    
+    # 清理间隔
+    cleanup_interval: 1h
+    
+    # 最大记录数
+    max_records: 10000
+
+# 监控配置
+monitoring:
+  # Prometheus 指标
+  prometheus:
+    # 启用 Prometheus 指标
+    enabled: true
+    
+    # 指标路径
+    path: "/metrics"
+    
+    # 指标前缀
+    prefix: "scheduler_tools_"
+  
+  # 健康检查
+  health:
+    # 健康检查路径
+    path: "/health"
+    
+    # 就绪检查路径
+    readiness_path: "/ready"
+    
+    # 存活检查路径
+    liveness_path: "/live"
+  
+  # 性能分析
+  profiling:
+    # 启用 pprof
+    enabled: false
+    
+    # pprof 路径
+    path: "/debug/pprof"
+
+# 安全配置
+security:
+  # TLS 配置
+  tls:
+    # 启用 TLS
+    enabled: false
+    
+    # 证书文件
+    cert_file: "/etc/certs/tls.crt"
+    
+    # 私钥文件
+    key_file: "/etc/certs/tls.key"
+    
+    # CA 证书文件
+    ca_file: "/etc/certs/ca.crt"
+  
+  # 认证配置
+  authentication:
+    # 认证类型: none, basic, token, oidc
+    type: "none"
+    
+    # Basic 认证
+    basic:
+      username: "admin"
+      password: "password"
+    
+    # Token 认证
+    token:
+      secret: "your-secret-token"
+    
+    # OIDC 认证
+    oidc:
+      issuer_url: ""
+      client_id: ""
+      client_secret: ""
+  
+  # 授权配置
+  authorization:
+    # 启用 RBAC
+    rbac_enabled: true
+    
+    # 角色定义
+    roles:
+      - name: "viewer"
+        permissions:
+          - "read"
+      
+      - name: "admin"
+        permissions:
+          - "read"
+          - "write"
+          - "delete"
+  
+  # CORS 配置
+  cors:
+    # 允许的源
+    allowed_origins:
+      - "http://localhost:3000"
+      - "https://dashboard.example.com"
+    
+    # 允许的方法
+    allowed_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+    
+    # 允许的头部
+    allowed_headers:
+      - "Content-Type"
+      - "Authorization"
+
+# 开发配置
+development:
+  # 开发模式
+  debug: false
+  
+  # 模拟数据
+  mock_data: false
+  
+  # 热重载
+  hot_reload: false
+  
+  # 详细日志
+  verbose_logging: false

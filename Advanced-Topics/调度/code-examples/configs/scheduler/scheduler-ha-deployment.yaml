@@ -1,0 +1,121 @@
+# scheduler-ha-deployment.yaml
+# 高可用调度器部署配置 - 生产环境推荐配置
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-scheduler-ha
+  namespace: kube-system
+  labels:
+    component: kube-scheduler
+    tier: control-plane
+spec:
+  replicas: 3  # 推荐奇数个实例，确保leader选举的可用性
+  selector:
+    matchLabels:
+      component: kube-scheduler
+      tier: control-plane
+  template:
+    metadata:
+      labels:
+        component: kube-scheduler
+        tier: control-plane
+    spec:
+      # 设置为系统关键优先级，确保调度器优先调度
+      priorityClassName: system-cluster-critical
+      # 安全上下文配置 - 遵循最小权限原则
+      securityContext:
+        runAsNonRoot: true      # 以非root用户运行
+        runAsUser: 65534        # 使用nobody用户
+        seccompProfile:
+          type: RuntimeDefault   # 启用默认seccomp配置
+      containers:
+      - name: kube-scheduler
+        image: registry.k8s.io/kube-scheduler:v1.28.4
+        command:
+        - kube-scheduler
+        # 核心配置参数
+        - --config=/etc/kubernetes/scheduler-config.yaml  # 调度器配置文件路径
+        - --authentication-kubeconfig=/etc/kubernetes/scheduler.conf  # 认证配置
+        - --authorization-kubeconfig=/etc/kubernetes/scheduler.conf   # 授权配置
+        - --bind-address=0.0.0.0  # 绑定所有网络接口
+        # Leader选举配置 - 确保高可用性
+        - --leader-elect=true                              # 启用leader选举
+        - --leader-elect-lease-duration=15s               # lease持续时间
+        - --leader-elect-renew-deadline=10s               # 续约截止时间
+        - --leader-elect-retry-period=2s                  # 重试间隔
+        - --leader-elect-resource-lock=leases             # 使用lease资源锁
+        - --leader-elect-resource-name=kube-scheduler     # 锁资源名称
+        - --leader-elect-resource-namespace=kube-system   # 锁资源命名空间
+        # 安全和性能配置
+        - --profiling=false  # 生产环境禁用性能分析
+        - --v=2             # 日志级别设置
+        # 健康检查配置
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 10259
+            scheme: HTTPS
+          initialDelaySeconds: 15  # 初始延迟时间
+          timeoutSeconds: 15       # 超时时间
+          failureThreshold: 8      # 失败阈值
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 10259
+            scheme: HTTPS
+          initialDelaySeconds: 5   # 就绪检查初始延迟
+          timeoutSeconds: 5        # 就绪检查超时
+        # 资源限制配置 - 根据集群规模调整
+        resources:
+          requests:
+            cpu: 100m      # 最小CPU需求
+            memory: 128Mi  # 最小内存需求
+          limits:
+            cpu: 2000m     # CPU上限，适用于大集群
+            memory: 1Gi    # 内存上限
+        # 容器安全配置
+        securityContext:
+          allowPrivilegeEscalation: false  # 禁止权限提升
+          capabilities:
+            drop:
+            - ALL                          # 移除所有Linux capabilities
+          readOnlyRootFilesystem: true     # 只读根文件系统
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kubernetes
+          readOnly: true  # 配置文件只读挂载
+      # 网络配置 - 使用主机网络以访问API服务器
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      # 容忍度配置 - 允许在控制平面节点上运行
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master  # 兼容旧版本标签
+        operator: Exists
+      # 节点选择器 - 仅在控制平面节点运行
+      nodeSelector:
+        node-role.kubernetes.io/control-plane: ""
+      volumes:
+      - name: config
+        configMap:
+          name: scheduler-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-scheduler-metrics
+  namespace: kube-system
+  labels:
+    component: kube-scheduler
+spec:
+  selector:
+    component: kube-scheduler
+  ports:
+  - name: https-metrics
+    port: 10259
+    protocol: TCP
+    targetPort: 10259
+  type: ClusterIP

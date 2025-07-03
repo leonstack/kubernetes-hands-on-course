@@ -1,0 +1,167 @@
+# scheduler-monitoring.yaml
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: scheduler-metrics
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+spec:
+  selector:
+    matchLabels:
+      component: kube-scheduler
+  endpoints:
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+    scheme: http
+  - port: http-metrics
+    interval: 30s
+    path: /metrics/resources
+    scheme: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: scheduler-metrics
+  namespace: kube-system
+  labels:
+    component: kube-scheduler
+spec:
+  selector:
+    component: kube-scheduler
+  ports:
+  - name: http-metrics
+    port: 10259
+    targetPort: 10259
+    protocol: TCP
+  clusterIP: None
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-dashboard
+  namespace: monitoring
+data:
+  dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Kubernetes Scheduler Metrics",
+        "tags": ["kubernetes", "scheduler"],
+        "style": "dark",
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Scheduling Latency",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, sum(rate(scheduler_scheduling_latency_seconds_bucket[5m])) by (le, scheduler))",
+                "legendFormat": "99th percentile - {{scheduler}}"
+              },
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(scheduler_scheduling_latency_seconds_bucket[5m])) by (le, scheduler))",
+                "legendFormat": "95th percentile - {{scheduler}}"
+              },
+              {
+                "expr": "histogram_quantile(0.50, sum(rate(scheduler_scheduling_latency_seconds_bucket[5m])) by (le, scheduler))",
+                "legendFormat": "50th percentile - {{scheduler}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Latency (seconds)",
+                "min": 0
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Scheduling Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(scheduler_scheduling_attempts_total[5m])) by (scheduler, result)",
+                "legendFormat": "{{scheduler}} - {{result}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Attempts per second",
+                "min": 0
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Pending Pods",
+            "type": "singlestat",
+            "targets": [
+              {
+                "expr": "scheduler_pending_pods",
+                "legendFormat": "Pending Pods"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8}
+          },
+          {
+            "id": 4,
+            "title": "Scheduler Health",
+            "type": "singlestat",
+            "targets": [
+              {
+                "expr": "scheduler_health_status",
+                "legendFormat": "Health Status"
+              }
+            ],
+            "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8}
+          },
+          {
+            "id": 5,
+            "title": "Node Utilization",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "avg(scheduler_node_utilization_ratio) by (resource)",
+                "legendFormat": "{{resource}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Utilization Ratio",
+                "min": 0,
+                "max": 1
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8}
+          },
+          {
+            "id": 6,
+            "title": "Plugin Execution Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, sum(rate(scheduler_plugin_execution_time_seconds_bucket[5m])) by (le, plugin))",
+                "legendFormat": "95th percentile - {{plugin}}"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Execution Time (seconds)",
+                "min": 0
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16}
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "30s"
+      }
+    }

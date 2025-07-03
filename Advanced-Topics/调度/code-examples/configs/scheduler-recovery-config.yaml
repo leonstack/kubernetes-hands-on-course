@@ -1,0 +1,244 @@
+# 调度器故障恢复配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-recovery-config
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+    component: recovery
+data:
+  recovery-policies.json: |
+    {
+      "policies": [
+        {
+          "name": "api-server-recovery",
+          "description": "API 服务器不可用时的恢复策略",
+          "triggers": [
+            {
+              "type": "api_unavailable",
+              "condition": "api_server_unreachable",
+              "threshold": 1,
+              "duration": "2m"
+            }
+          ],
+          "actions": [
+            {
+              "type": "restart_pod",
+              "parameters": {
+                "namespace": "kube-system",
+                "labelSelector": "component=kube-scheduler"
+              },
+              "timeout": "60s"
+            }
+          ],
+          "cooldown": "300s"
+        },
+        {
+          "name": "leader-election-recovery",
+          "description": "Leader 选举失败时的恢复策略",
+          "triggers": [
+            {
+              "type": "leader_election_failed",
+              "condition": "leader_election_timeout",
+              "threshold": 1,
+              "duration": "3m"
+            }
+          ],
+          "actions": [
+            {
+              "type": "force_leader_election",
+              "parameters": {
+                "namespace": "kube-system",
+                "resourceName": "kube-scheduler"
+              },
+              "timeout": "30s"
+            },
+            {
+              "type": "restart_pod",
+              "parameters": {
+                "namespace": "kube-system",
+                "labelSelector": "component=kube-scheduler"
+              },
+              "timeout": "60s"
+            }
+          ],
+          "cooldown": "600s"
+        },
+        {
+          "name": "pending-pods-recovery",
+          "description": "大量 Pending Pod 时的恢复策略",
+          "triggers": [
+            {
+              "type": "pending_pods_high",
+              "condition": "pending_pod_count",
+              "threshold": 100,
+              "duration": "5m"
+            }
+          ],
+          "actions": [
+            {
+              "type": "reschedule_pods",
+              "parameters": {
+                "maxPods": 50,
+                "priorityThreshold": 0
+              },
+              "timeout": "120s"
+            }
+          ],
+          "cooldown": "900s"
+        },
+        {
+          "name": "scheduler-overload-recovery",
+          "description": "调度器过载时的恢复策略",
+          "triggers": [
+            {
+              "type": "health_check_failed",
+              "condition": "scheduler-metrics",
+              "threshold": 1,
+              "duration": "5m"
+            }
+          ],
+          "actions": [
+            {
+              "type": "scale_scheduler",
+              "parameters": {
+                "namespace": "kube-system",
+                "deploymentName": "kube-scheduler",
+                "replicas": 3
+              },
+              "timeout": "180s"
+            }
+          ],
+          "cooldown": "1800s"
+        }
+      ],
+      "escalation": {
+        "levels": [
+          {
+            "level": 1,
+            "description": "轻度干预",
+            "actions": ["restart_pod"]
+          },
+          {
+            "level": 2,
+            "description": "中度干预",
+            "actions": ["force_leader_election", "reschedule_pods"]
+          },
+          {
+            "level": 3,
+            "description": "重度干预",
+            "actions": ["scale_scheduler"]
+          }
+        ],
+        "escalationInterval": "600s"
+      }
+    }
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: scheduler-recovery-manager
+rules:
+- apiGroups: [""]
+  resources: ["pods", "nodes", "configmaps", "leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["policy"]
+  resources: ["poddisruptionbudgets"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: scheduler-recovery-manager
+  namespace: kube-system
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: scheduler-recovery-manager
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: scheduler-recovery-manager
+subjects:
+- kind: ServiceAccount
+  name: scheduler-recovery-manager
+  namespace: kube-system
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scheduler-recovery-manager
+  namespace: kube-system
+  labels:
+    app: scheduler-recovery-manager
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scheduler-recovery-manager
+  template:
+    metadata:
+      labels:
+        app: scheduler-recovery-manager
+    spec:
+      serviceAccountName: scheduler-recovery-manager
+      containers:
+      - name: recovery-manager
+        image: scheduler-recovery-manager:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: CONFIG_PATH
+          value: "/etc/config/recovery-policies.json"
+        - name: HEALTH_CHECKER_ENDPOINT
+          value: "http://scheduler-health-service:10251"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: config
+        configMap:
+          name: scheduler-recovery-config
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule

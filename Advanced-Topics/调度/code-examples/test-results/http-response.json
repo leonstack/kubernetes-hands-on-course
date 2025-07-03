@@ -1,0 +1,17 @@
+Scheduler Analysis Report
+Generated at: 2025-07-03T11:38:54+08:00
+
+Performance Metrics:
+  Average Latency: 50ms
+  P95 Latency: 200ms
+  P99 Latency: 500ms
+  Throughput: 100.00 pods/sec
+  Failure Rate: 2.00%
+
+Resource Analysis:
+  cpu: 13.12%
+  memory: 6.41%
+
+Recommendations:
+  1. {Performance High Optimize Scheduling Latency 95th percentile scheduling latency is above 100ms Consider tuning scheduler configuration or reducing plugin complexity Improved pod startup time and user experience}
+  2. {Resource Optimization Medium Improve CPU Utilization Cluster CPU utilization is below 30% Consider consolidating workloads or scaling down cluster Reduced infrastructure costs}

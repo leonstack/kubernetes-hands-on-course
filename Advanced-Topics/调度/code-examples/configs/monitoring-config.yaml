@@ -1,0 +1,363 @@
+# 调度器监控配置
+# Prometheus 告警规则
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: scheduler-alerts
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+    component: monitoring
+spec:
+  groups:
+  - name: scheduler.performance
+    rules:
+    - alert: SchedulerPendingPodsHigh
+      expr: |
+        (
+          sum(kube_pod_status_phase{phase="Pending"}) by (cluster)
+          /
+          sum(kube_pod_status_phase) by (cluster)
+        ) * 100 > 10
+      for: 5m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "High number of pending pods"
+        description: "{{ $value }}% of pods are in pending state for more than 5 minutes."
+    
+    - alert: SchedulerFailureRateHigh
+      expr: |
+        (
+          rate(scheduler_schedule_attempts_total{result="error"}[5m])
+          /
+          rate(scheduler_schedule_attempts_total[5m])
+        ) * 100 > 5
+      for: 2m
+      labels:
+        severity: critical
+        component: scheduler
+      annotations:
+        summary: "High scheduler failure rate"
+        description: "Scheduler failure rate is {{ $value }}% over the last 5 minutes."
+    
+    - alert: SchedulerLatencyHigh
+      expr: |
+        histogram_quantile(0.99, 
+          rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m])
+        ) > 1
+      for: 3m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "High scheduler latency"
+        description: "99th percentile scheduler latency is {{ $value }}s."
+    
+    - alert: SchedulerThroughputLow
+      expr: |
+        rate(scheduler_schedule_attempts_total{result="scheduled"}[5m]) < 10
+      for: 5m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "Low scheduler throughput"
+        description: "Scheduler throughput is {{ $value }} pods/second."
+    
+    - alert: SchedulerQueueLengthHigh
+      expr: |
+        scheduler_pending_pods > 1000
+      for: 5m
+      labels:
+        severity: warning
+        component: scheduler
+      annotations:
+        summary: "High scheduler queue length"
+        description: "Scheduler queue length is {{ $value }} pods."
+
+---
+# Grafana 仪表板配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-dashboard
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+    component: monitoring
+    grafana_dashboard: "1"
+data:
+  scheduler-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Kubernetes Scheduler Performance",
+        "tags": ["kubernetes", "scheduler"],
+        "style": "dark",
+        "timezone": "browser",
+        "refresh": "30s",
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "panels": [
+          {
+            "id": 1,
+            "title": "调度延迟",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m]))",
+                "legendFormat": "99th percentile",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m]))",
+                "legendFormat": "95th percentile",
+                "refId": "B"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m]))",
+                "legendFormat": "50th percentile",
+                "refId": "C"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Duration (seconds)",
+                "min": 0
+              }
+            ]
+          },
+          {
+            "id": 2,
+            "title": "调度吞吐量",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+            "targets": [
+              {
+                "expr": "rate(scheduler_schedule_attempts_total{result=\"scheduled\"}[5m])",
+                "legendFormat": "Successful schedules/sec",
+                "refId": "A"
+              },
+              {
+                "expr": "rate(scheduler_schedule_attempts_total{result=\"error\"}[5m])",
+                "legendFormat": "Failed schedules/sec",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Rate (per second)",
+                "min": 0
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Pending Pod 数量",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+            "targets": [
+              {
+                "expr": "sum(kube_pod_status_phase{phase=\"Pending\"})",
+                "legendFormat": "Pending Pods",
+                "refId": "A"
+              },
+              {
+                "expr": "scheduler_pending_pods",
+                "legendFormat": "Scheduler Queue Length",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Count",
+                "min": 0
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "调度成功率",
+            "type": "singlestat",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+            "targets": [
+              {
+                "expr": "(rate(scheduler_schedule_attempts_total{result=\"scheduled\"}[5m]) / rate(scheduler_schedule_attempts_total[5m])) * 100",
+                "refId": "A"
+              }
+            ],
+            "valueName": "current",
+            "format": "percent",
+            "thresholds": "80,95",
+            "colorBackground": true
+          },
+          {
+            "id": 5,
+            "title": "节点评分时间",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, rate(scheduler_framework_extension_point_duration_seconds_bucket{extension_point=\"Score\"}[5m]))",
+                "legendFormat": "99th percentile",
+                "refId": "A"
+              },
+              {
+                "expr": "histogram_quantile(0.95, rate(scheduler_framework_extension_point_duration_seconds_bucket{extension_point=\"Score\"}[5m]))",
+                "legendFormat": "95th percentile",
+                "refId": "B"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Duration (seconds)",
+                "min": 0
+              }
+            ]
+          },
+          {
+            "id": 6,
+            "title": "插件执行时间",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.99, rate(scheduler_plugin_execution_duration_seconds_bucket[5m]))",
+                "legendFormat": "{{plugin}} - 99th percentile",
+                "refId": "A"
+              }
+            ],
+            "yAxes": [
+              {
+                "label": "Duration (seconds)",
+                "min": 0
+              }
+            ]
+          }
+        ]
+      }
+    }
+
+---
+# ServiceMonitor for Prometheus
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kube-scheduler
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+    component: monitoring
+spec:
+  selector:
+    matchLabels:
+      component: kube-scheduler
+  endpoints:
+  - port: http-metrics
+    interval: 30s
+    path: /metrics
+    scheme: https
+    tlsConfig:
+      caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      serverName: kube-scheduler
+      insecureSkipVerify: true
+    bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+---
+# Scheduler metrics service
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-scheduler-metrics
+  namespace: kube-system
+  labels:
+    component: kube-scheduler
+    app: kube-scheduler
+spec:
+  selector:
+    component: kube-scheduler
+  ports:
+  - name: http-metrics
+    port: 10259
+    targetPort: 10259
+    protocol: TCP
+  - name: http-healthz
+    port: 10251
+    targetPort: 10251
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Custom metrics for scheduler performance
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-custom-metrics
+  namespace: kube-system
+  labels:
+    app: kube-scheduler
+    component: monitoring
+data:
+  recording-rules.yaml: |
+    groups:
+    - name: scheduler.performance.recording
+      interval: 30s
+      rules:
+      - record: scheduler:scheduling_latency_seconds:p99
+        expr: |
+          histogram_quantile(0.99, 
+            rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m])
+          )
+      
+      - record: scheduler:scheduling_latency_seconds:p95
+        expr: |
+          histogram_quantile(0.95, 
+            rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m])
+          )
+      
+      - record: scheduler:scheduling_latency_seconds:p50
+        expr: |
+          histogram_quantile(0.50, 
+            rate(scheduler_scheduling_algorithm_duration_seconds_bucket[5m])
+          )
+      
+      - record: scheduler:throughput:rate5m
+        expr: |
+          rate(scheduler_schedule_attempts_total{result="scheduled"}[5m])
+      
+      - record: scheduler:failure_rate:rate5m
+        expr: |
+          rate(scheduler_schedule_attempts_total{result="error"}[5m]) /
+          rate(scheduler_schedule_attempts_total[5m])
+      
+      - record: scheduler:success_rate:rate5m
+        expr: |
+          rate(scheduler_schedule_attempts_total{result="scheduled"}[5m]) /
+          rate(scheduler_schedule_attempts_total[5m])
+      
+      - record: scheduler:pending_pods:total
+        expr: |
+          sum(kube_pod_status_phase{phase="Pending"})
+      
+      - record: scheduler:queue_length
+        expr: |
+          scheduler_pending_pods
+      
+      - record: scheduler:node_utilization:cpu
+        expr: |
+          (
+            sum(rate(container_cpu_usage_seconds_total{container!="POD",container!=""}[5m])) by (node) /
+            sum(kube_node_status_allocatable{resource="cpu"}) by (node)
+          ) * 100
+      
+      - record: scheduler:node_utilization:memory
+        expr: |
+          (
+            sum(container_memory_working_set_bytes{container!="POD",container!=""}) by (node) /
+            sum(kube_node_status_allocatable{resource="memory"}) by (node)
+          ) * 100

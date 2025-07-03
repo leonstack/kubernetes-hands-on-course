@@ -1,0 +1,26 @@
+# edge-node-labels.yaml
+apiVersion: v1
+kind: Node
+metadata:
+  name: edge-node-east-01
+  labels:
+    node.kubernetes.io/edge-zone: "edge-zone-east"
+    node.kubernetes.io/edge-latency: "8ms"
+    node.kubernetes.io/edge-bandwidth: "1000"
+    node.kubernetes.io/edge-reliability: "0.99"
+    node.kubernetes.io/instance-type: "edge"
+    topology.kubernetes.io/region: "us-east-1"
+    topology.kubernetes.io/zone: "us-east-1a"
+---
+apiVersion: v1
+kind: Node
+metadata:
+  name: edge-node-west-01
+  labels:
+    node.kubernetes.io/edge-zone: "edge-zone-west"
+    node.kubernetes.io/edge-latency: "12ms"
+    node.kubernetes.io/edge-bandwidth: "500"
+    node.kubernetes.io/edge-reliability: "0.95"
+    node.kubernetes.io/instance-type: "edge"
+    topology.kubernetes.io/region: "us-west-1"
+    topology.kubernetes.io/zone: "us-west-1a"

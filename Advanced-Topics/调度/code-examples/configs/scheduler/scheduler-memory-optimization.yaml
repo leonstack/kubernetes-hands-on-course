@@ -1,0 +1,76 @@
+# scheduler-memory-optimization.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scheduler-memory-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    apiVersion: kubescheduler.config.k8s.io/v1beta3
+    kind: KubeSchedulerConfiguration
+    clientConnection:
+      qps: 50
+      burst: 100
+    profiles:
+    - schedulerName: memory-optimized-scheduler
+      plugins:
+        filter:
+          enabled:
+          - name: NodeResourcesFit
+          - name: NodeAffinity
+          disabled:
+          - name: VolumeRestrictions  # 减少内存使用
+        score:
+          enabled:
+          - name: NodeResourcesFit
+          - name: NodeAffinity
+          disabled:
+          - name: ImageLocality  # 减少内存使用
+      pluginConfig:
+      - name: NodeResourcesFit
+        args:
+          scoringStrategy:
+            type: LeastAllocated
+    # 内存优化配置
+    percentageOfNodesToScore: 30  # 减少评分节点数量
+    parallelism: 8  # 适中的并行度
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: memory-optimized-scheduler
+  namespace: kube-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: memory-optimized-scheduler
+  template:
+    metadata:
+      labels:
+        app: memory-optimized-scheduler
+    spec:
+      containers:
+      - name: kube-scheduler
+        image: registry.k8s.io/kube-scheduler:v1.28.4
+        command:
+        - kube-scheduler
+        - --config=/etc/kubernetes/config.yaml
+        - --v=2
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi  # 限制内存使用
+        env:
+        - name: GOGC
+          value: "50"  # 更频繁的垃圾回收
+        volumeMounts:
+        - name: config
+          mountPath: /etc/kubernetes
+      volumes:
+      - name: config
+        configMap:
+          name: scheduler-memory-config

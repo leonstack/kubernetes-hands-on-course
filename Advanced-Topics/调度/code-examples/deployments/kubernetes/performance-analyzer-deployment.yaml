@@ -1,0 +1,312 @@
+# performance-analyzer-deployment.yaml
+# Kubernetes 调度性能趋势分析器部署配置
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+    component: scheduler-monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: performance-analyzer
+  template:
+    metadata:
+      labels:
+        app: performance-analyzer
+        component: scheduler-monitoring
+    spec:
+      serviceAccountName: performance-analyzer
+      containers:
+      - name: performance-analyzer
+        image: performance-analyzer:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8081
+          name: http
+        env:
+        - name: PORT
+          value: "8081"
+        - name: ANALYSIS_WINDOW
+          value: "1h"
+        - name: COLLECTION_INTERVAL
+          value: "1m"
+        - name: LOG_LEVEL
+          value: "2"
+        args:
+        - "--port=$(PORT)"
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          successThreshold: 1
+          failureThreshold: 3
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: performance-analyzer-config
+      nodeSelector:
+        kubernetes.io/os: linux
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        operator: Exists
+        effect: NoSchedule
+      - key: node-role.kubernetes.io/control-plane
+        operator: Exists
+        effect: NoSchedule
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 8081
+    protocol: TCP
+    name: http
+  selector:
+    app: performance-analyzer
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: performance-analyzer
+  labels:
+    app: performance-analyzer
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "pods", "events"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "replicasets"]
+  verbs: ["get", "list"]
+- apiGroups: ["scheduling.k8s.io"]
+  resources: ["priorityclasses"]
+  verbs: ["get", "list"]
+- apiGroups: ["coordination.k8s.io"]
+  resources: ["leases"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: performance-analyzer
+  labels:
+    app: performance-analyzer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: performance-analyzer
+subjects:
+- kind: ServiceAccount
+  name: performance-analyzer
+  namespace: kube-system
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: performance-analyzer-config
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+data:
+  config.yaml: |
+    analysis:
+      window: 1h
+      collection_interval: 1m
+      anomaly_thresholds:
+        latency_high: 200.0
+        latency_critical: 500.0
+        throughput_low: 30.0
+        success_rate_low: 95.0
+        success_rate_critical: 90.0
+    
+    metrics:
+      enabled_collectors:
+        - scheduling_latency
+        - throughput
+        - success_rate
+        - queue_length
+        - node_utilization
+        - filter_latency
+        - score_latency
+        - bind_latency
+    
+    alerts:
+      enabled: true
+      webhook_url: ""
+      severity_levels:
+        - high
+        - medium
+    
+    storage:
+      retention_period: 24h
+      max_metrics: 10000
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: performance-analyzer.local
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: performance-analyzer
+            port:
+              number: 80
+
+---
+# HorizontalPodAutoscaler for performance analyzer
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: performance-analyzer
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+      - type: Percent
+        value: 50
+        periodSeconds: 60
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      policies:
+      - type: Percent
+        value: 100
+        periodSeconds: 30
+
+---
+# PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: performance-analyzer
+
+---
+# NetworkPolicy for security
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: performance-analyzer
+  namespace: kube-system
+  labels:
+    app: performance-analyzer
+spec:
+  podSelector:
+    matchLabels:
+      app: performance-analyzer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 443  # HTTPS
+    - protocol: TCP
+      port: 6443 # Kubernetes API
+    - protocol: UDP
+      port: 53   # DNS
+    - protocol: TCP
+      port: 53   # DNS

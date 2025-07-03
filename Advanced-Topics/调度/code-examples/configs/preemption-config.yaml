@@ -1,0 +1,258 @@
+# 调度器抢占策略配置
+apiVersion: kubescheduler.config.k8s.io/v1beta3
+kind: KubeSchedulerConfiguration
+metadata:
+  name: preemption-scheduler
+profiles:
+- schedulerName: preemption-scheduler
+  plugins:
+    # 启用抢占插件
+    postFilter:
+      enabled:
+      - name: DefaultPreemption
+      - name: CustomPreemption  # 自定义抢占插件
+    
+    filter:
+      enabled:
+      - name: NodeResourcesFit
+      - name: NodeAffinity
+      - name: PodTopologySpread
+      - name: TaintToleration
+      - name: NodePorts
+      - name: NodeUnschedulable
+      - name: VolumeRestrictions
+      - name: VolumeBinding
+      - name: VolumeZone
+      - name: PodOverhead
+      - name: InterPodAffinity
+    
+    score:
+      enabled:
+      - name: NodeResourcesFit
+        weight: 1
+      - name: NodeAffinity
+        weight: 2
+      - name: PodTopologySpread
+        weight: 2
+      - name: InterPodAffinity
+        weight: 2
+      - name: NodeResourcesLeastAllocated
+        weight: 1
+      - name: ImageLocality
+        weight: 1
+      - name: TaintToleration
+        weight: 1
+  
+  # 插件配置
+  pluginConfig:
+  - name: DefaultPreemption
+    args:
+      # 抢占候选节点的最小百分比
+      minCandidateNodesPercentage: 10
+      # 抢占候选节点的最小绝对数量
+      minCandidateNodesAbsolute: 100
+  
+  - name: CustomPreemption
+    args:
+      # 自定义抢占策略参数
+      enablePriorityBasedPreemption: true
+      enableResourceBasedPreemption: true
+      enableAffinityBasedPreemption: true
+      maxVictimsPerNode: 5
+      preemptionGracePeriod: 30s
+      respectPodDisruptionBudget: true
+  
+  - name: NodeResourcesFit
+    args:
+      scoringStrategy:
+        type: LeastAllocated
+        resources:
+        - name: cpu
+          weight: 1
+        - name: memory
+          weight: 1
+  
+  - name: PodTopologySpread
+    args:
+      defaultConstraints:
+      - maxSkew: 1
+        topologyKey: topology.kubernetes.io/zone
+        whenUnsatisfiable: ScheduleAnyway
+      - maxSkew: 1
+        topologyKey: kubernetes.io/hostname
+        whenUnsatisfiable: ScheduleAnyway
+
+# 性能优化参数
+parallelism: 16
+percentageOfNodesToScore: 50
+
+# 客户端连接配置
+clientConnection:
+  kubeconfig: "/etc/kubernetes/scheduler.conf"
+  acceptContentTypes: "application/vnd.kubernetes.protobuf,application/json"
+  contentType: "application/vnd.kubernetes.protobuf"
+  qps: 100
+  burst: 200
+
+# Leader 选举配置
+leaderElection:
+  leaderElect: true
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
+  resourceLock: leases
+  resourceName: preemption-scheduler
+  resourceNamespace: kube-system
+
+---
+# 优先级类定义
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: system-critical
+value: 2000000000
+globalDefault: false
+description: "系统关键组件的最高优先级"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000000
+globalDefault: false
+description: "高优先级应用"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: medium-priority
+value: 100000
+globalDefault: true
+description: "中等优先级应用（默认）"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 1000
+globalDefault: false
+description: "低优先级应用"
+
+---
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: best-effort
+value: 0
+globalDefault: false
+description: "尽力而为的最低优先级"
+
+---
+# 抢占策略示例 Pod
+apiVersion: v1
+kind: Pod
+metadata:
+  name: high-priority-web-app
+  namespace: default
+  labels:
+    app: web-app
+    tier: frontend
+  annotations:
+    scheduler.alpha.kubernetes.io/preemption-policy: "PreemptLowerPriority"
+spec:
+  priorityClassName: high-priority
+  schedulerName: preemption-scheduler
+  containers:
+  - name: web-server
+    image: nginx:1.21
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+    ports:
+    - containerPort: 80
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        preference:
+          matchExpressions:
+          - key: node-type
+            operator: In
+            values:
+            - web-server
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+            - key: app
+              operator: In
+              values:
+              - web-app
+          topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: low-priority-batch-job
+  namespace: default
+  labels:
+    app: batch-job
+    tier: batch
+  annotations:
+    scheduler.alpha.kubernetes.io/preemption-policy: "Never"  # 不允许被抢占
+spec:
+  priorityClassName: low-priority
+  schedulerName: preemption-scheduler
+  containers:
+  - name: batch-processor
+    image: busybox:1.35
+    command: ["sleep", "3600"]
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+  tolerations:
+  - key: node-type
+    operator: Equal
+    value: batch
+    effect: NoSchedule
+
+---
+# Pod 中断预算示例
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: web-app-pdb
+  namespace: default
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: web-app
+      tier: frontend
+
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: batch-job-pdb
+  namespace: default
+spec:
+  maxUnavailable: 50%
+  selector:
+    matchLabels:
+      app: batch-job
+      tier: batch

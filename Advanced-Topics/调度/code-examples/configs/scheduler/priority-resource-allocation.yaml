@@ -1,0 +1,94 @@
+# priority-resource-allocation.yaml
+# 基于优先级的分层资源配额管理配置
+# 确保高优先级工作负载获得充足资源，同时防止低优先级工作负载过度消耗
+
+# 高优先级工作负载的资源配额
+# 为关键业务应用预留最多的资源
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: high-priority-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "100"      # CPU请求总量：100核心
+    requests.memory: 200Gi    # 内存请求总量：200GB
+    limits.cpu: "200"         # CPU限制总量：200核心（允许突发）
+    limits.memory: 400Gi      # 内存限制总量：400GB
+    pods: "50"                # 最大Pod数量：50个
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass  # 仅适用于指定优先级类的Pod
+      values: ["high-priority"]
+---
+# 中等优先级工作负载的资源配额
+# 为常规业务应用分配适中的资源
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: medium-priority-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "50"        # CPU请求总量：50核心
+    requests.memory: 100Gi    # 内存请求总量：100GB
+    limits.cpu: "100"         # CPU限制总量：100核心
+    limits.memory: 200Gi      # 内存限制总量：200GB
+    pods: "30"                # 最大Pod数量：30个
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values: ["medium-priority"]
+---
+# 低优先级工作负载的资源配额
+# 为非关键应用和批处理任务分配基础资源
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: low-priority-quota
+  namespace: production
+spec:
+  hard:
+    requests.cpu: "20"        # CPU请求总量：20核心
+    requests.memory: 40Gi     # 内存请求总量：40GB
+    limits.cpu: "40"          # CPU限制总量：40核心
+    limits.memory: 80Gi       # 内存限制总量：80GB
+    pods: "20"                # 最大Pod数量：20个
+  scopeSelector:
+    matchExpressions:
+    - operator: In
+      scopeName: PriorityClass
+      values: ["low-priority"]
+---
+# 优先级类定义
+# 定义不同优先级的调度策略和抢占行为
+
+# 高优先级类 - 关键业务应用
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: high-priority
+value: 1000                    # 最高优先级值
+globalDefault: false           # 不作为默认优先级
+description: "High priority workloads for critical business applications"
+---
+# 中等优先级类 - 常规业务应用
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: medium-priority
+value: 500                     # 中等优先级值
+globalDefault: true            # 设为默认优先级
+description: "Medium priority workloads for regular business applications"
+---
+# 低优先级类 - 批处理和非关键任务
+apiVersion: scheduling.k8s.io/v1
+kind: PriorityClass
+metadata:
+  name: low-priority
+value: 100                     # 最低优先级值
+globalDefault: false           # 不作为默认优先级
+description: "Low priority workloads for batch jobs and non-critical tasks"
+preemptionPolicy: Never        # 禁止抢占其他Pod，避免影响稳定性
