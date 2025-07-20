@@ -1,0 +1,210 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="800" height="600" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .hpa-box {
+        fill: #ff9999;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .custom-metrics-api-box {
+        fill: #ffcc66;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .deployment-box {
+        fill: #4a6741;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .replicaset-box {
+        fill: #4a6741;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .pod-box {
+        fill: #66cccc;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .prometheus-adapter-box {
+        fill: #3399cc;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .prometheus-box {
+        fill: #3399cc;
+        stroke: none;
+        rx: 8;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+      }
+      .text-white {
+        font-family: Arial, sans-serif;
+        font-size: 14px;
+        font-weight: bold;
+        text-anchor: middle;
+        fill: white;
+      }
+      .text-black {
+        font-family: Arial, sans-serif;
+        font-size: 12px;
+        text-anchor: middle;
+        fill: #333;
+      }
+      .arrow {
+        stroke: #333;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrowhead);
+      }
+      .metrics-arrow {
+        stroke: #3399cc;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrowhead-blue);
+      }
+      .control-arrow {
+        stroke: #cc0000;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrowhead-red);
+      }
+      .api-arrow {
+        stroke: #ff9900;
+        stroke-width: 2;
+        fill: none;
+        marker-end: url(#arrowhead-orange);
+      }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" 
+            refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+    </marker>
+    <marker id="arrowhead-blue" markerWidth="10" markerHeight="7" 
+            refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#3399cc" />
+    </marker>
+    <marker id="arrowhead-red" markerWidth="10" markerHeight="7" 
+            refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#cc0000" />
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="10" markerHeight="7" 
+            refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#ff9900" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="600" fill="#a8c8ec"/>
+
+  <!-- Horizontal Pod Autoscaler - 与左侧组件居中对齐 -->
+  <rect x="100" y="50" width="200" height="60" class="hpa-box"/>
+  <text x="200" y="85" class="text-white">Horizontal Pod Autoscaler</text>
+
+  <!-- Custom Metrics API - 与右侧组件居中对齐 -->
+  <rect x="510" y="50" width="180" height="60" class="custom-metrics-api-box"/>
+  <text x="600" y="85" class="text-white">Custom Metrics API</text>
+
+  <!-- Deployment - 与 HPA 居中对齐 -->
+  <rect x="140" y="170" width="120" height="60" class="deployment-box"/>
+  <text x="200" y="205" class="text-white">Deployment</text>
+
+  <!-- Replica Set - 与 Deployment 居中对齐 -->
+  <rect x="140" y="290" width="120" height="60" class="replicaset-box"/>
+  <text x="200" y="325" class="text-white">Replica Set</text>
+
+  <!-- PODs - 对称排列，以 Replica Set 为中心 -->
+  <rect x="60" y="410" width="80" height="60" class="pod-box"/>
+  <text x="100" y="445" class="text-white">POD</text>
+
+  <rect x="160" y="410" width="80" height="60" class="pod-box"/>
+  <text x="200" y="445" class="text-white">POD</text>
+
+  <rect x="260" y="410" width="80" height="60" class="pod-box"/>
+  <text x="300" y="445" class="text-white">POD</text>
+
+  <!-- Prometheus Adapter - 与 Custom Metrics API 居中对齐 -->
+  <rect x="525" y="170" width="150" height="60" class="prometheus-adapter-box"/>
+  <text x="600" y="205" class="text-white">Prometheus Adapter</text>
+
+  <!-- Prometheus - 与右侧组件居中对齐 -->
+  <rect x="540" y="290" width="120" height="80" class="prometheus-box"/>
+  <text x="600" y="335" class="text-white">Prometheus</text>
+
+  <!-- Arrows and Labels -->
+  
+  <!-- HPA to Custom Metrics API -->
+  <line x1="300" y1="80" x2="510" y2="80" class="control-arrow"/>
+  <text x="405" y="70" class="text-black">custom/metrics.k8s.io</text>
+
+  <!-- HPA to Deployment -->
+  <line x1="200" y1="110" x2="200" y2="170" class="control-arrow"/>
+
+  <!-- Deployment to Replica Set -->
+  <line x1="200" y1="230" x2="200" y2="290" class="arrow"/>
+
+  <!-- Replica Set to PODs - 对称连接 -->
+  <line x1="180" y1="350" x2="100" y2="410" class="arrow"/>
+  <line x1="200" y1="350" x2="200" y2="410" class="arrow"/>
+  <line x1="220" y1="350" x2="300" y2="410" class="arrow"/>
+
+  <!-- Custom Metrics API to Prometheus Adapter - 修正方向 -->
+  <line x1="600" y1="170" x2="600" y2="110" class="api-arrow"/>
+
+  <!-- Prometheus Adapter to Prometheus - 修正方向 -->
+  <line x1="600" y1="290" x2="600" y2="230" class="metrics-arrow"/>
+
+  <!-- PODs to Prometheus (metrics collection) - 调整箭头位置 -->
+  <!-- 左侧 Pod 到 Prometheus 下方右侧 1/4 位置 -->
+  <path d="M 100 470 L 100 520 L 615 520 L 615 370" class="metrics-arrow"/>
+  <text x="357" y="535" class="text-black" style="font-size: 10px;">/metrics</text>
+
+  <!-- 中间 Pod 到 Prometheus 下方中间 1/2 位置 -->
+  <path d="M 200 470 L 200 500 L 600 500 L 600 370" class="metrics-arrow"/>
+  <text x="400" y="515" class="text-black" style="font-size: 10px;">/metrics</text>
+
+  <!-- 右侧 Pod 到 Prometheus 下方左侧 1/4 位置 -->
+  <path d="M 300 470 L 300 480 L 585 480 L 585 370" class="metrics-arrow"/>
+  <text x="442" y="495" class="text-black" style="font-size: 10px;">/metrics</text>
+
+  <!-- 添加文字说明 -->
+  <!-- 标题 -->
+  <text x="400" y="30" class="text-black" style="font-size: 18px; font-weight: bold; text-anchor: middle;">Kubernetes HPA 自定义指标架构图</text>
+  
+  <!-- 图例说明 - 居中显示并解决箭头与文字重合问题 -->
+  <g transform="translate(200, 550)">
+    <text x="200" y="0" class="text-black" style="font-size: 12px; font-weight: bold; text-anchor: middle;">图例说明</text>
+    
+    <!-- HPA 控制流 -->
+    <line x1="0" y1="20" x2="20" y2="20" class="control-arrow"/>
+    <text x="30" y="24" class="text-black" style="font-size: 10px; text-anchor: start;">HPA 控制流</text>
+    
+    <!-- API 调用 -->
+    <line x1="100" y1="20" x2="120" y2="20" class="api-arrow"/>
+    <text x="130" y="24" class="text-black" style="font-size: 10px; text-anchor: start;">API 调用</text>
+    
+    <!-- 指标数据流 -->
+    <line x1="200" y1="20" x2="220" y2="20" class="metrics-arrow"/>
+    <text x="230" y="24" class="text-black" style="font-size: 10px; text-anchor: start;">指标数据流</text>
+    
+    <!-- 管理关系 -->
+    <line x1="320" y1="20" x2="340" y2="20" class="arrow"/>
+    <text x="350" y="24" class="text-black" style="font-size: 10px; text-anchor: start;">管理关系</text>
+  </g>
+
+  <!-- 流程说明 - 与 Prometheus Adapter 垂直居中 -->
+  <g transform="translate(450, 170)">
+    <text x="0" y="0" class="text-black" style="font-size: 12px; font-weight: bold;">自定义指标流程：</text>
+    <text x="0" y="20" class="text-black" style="font-size: 10px;">1. Pod 暴露 /metrics 端点</text>
+    <text x="0" y="35" class="text-black" style="font-size: 10px;">2. Prometheus 采集指标数据</text>
+    <text x="0" y="50" class="text-black" style="font-size: 10px;">3. Adapter 转换为 K8s API</text>
+    <text x="0" y="65" class="text-black" style="font-size: 10px;">4. HPA 查询自定义指标</text>
+    <text x="0" y="80" class="text-black" style="font-size: 10px;">5. 根据指标自动扩缩容</text>
+  </g>
+</svg>
