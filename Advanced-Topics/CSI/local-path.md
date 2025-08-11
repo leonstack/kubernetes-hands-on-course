@@ -37,11 +37,12 @@ Local Persistent Volume 基于节点亲和性（Node Affinity）机制和 Kubern
 
 ### 1.4 系统要求
 
-- **Kubernetes 版本**：v1.12+ （推荐 v1.24+ 以获得更好的稳定性）
+- **Kubernetes 版本**：v1.12+ （推荐 v1.28+ 以获得更好的稳定性和功能支持）
 - **节点存储**：节点具有可用的本地存储空间
 - **权限配置**：集群具有动态卷供应的权限配置
 - **容器运行时**：支持 containerd、Docker 等主流容器运行时
 - **操作系统**：支持 Linux 和 Windows 节点（Windows 支持有限）
+- **Go 版本**：1.24+ （用于从源码构建）
 
 ---
 
@@ -61,7 +62,7 @@ Local Persistent Volume 基于节点亲和性（Node Affinity）机制和 Kubern
 
 1. 自动化生命周期管理
 
-   - 自动创建和清理存储目录 12
+   - 自动创建和清理存储目录
    - 无需手动管理 PV 资源
    - 支持配置热重载，运行时更新存储配置
 
@@ -81,7 +82,7 @@ Local Persistent Volume 基于节点亲和性（Node Affinity）机制和 Kubern
 | **性能** | 🟡 基于 hostPath | 🟢 原生 local 卷性能更好 |
 | **维护成本** | 🟢 低维护成本 | 🔴 高维护成本 |
 
-- Local Path Provisioner : 基于 hostPath 实现，通过文件系统 bind mount 提供存储；
+- Local Path Provisioner : 支持基于 hostPath 和 local 两种类型的卷实现，通过文件系统提供存储；
 - Kubernetes Local Volume : 原生 local 卷类型，直接访问块设备或文件系统，性能更优。
 
 ### 2.3 与网络存储方案对比
@@ -256,7 +257,61 @@ data:
     }
 ```
 
-#### 4.4.2 自定义 Helper Pod 模板
+#### 4.4.2 配置共享文件系统
+
+对于需要支持 ReadWriteMany 访问模式的场景，可以配置共享文件系统：
+
+```yaml
+# shared-fs-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-path-config
+  namespace: local-path-storage
+data:
+  config.json: |-
+    {
+      "sharedFileSystemPath": "/shared/fs/mounted/on/the/same/path/on/all/nodes"
+    }
+```
+
+#### 4.4.3 多存储类配置
+
+支持为不同的存储类配置不同的存储路径：
+
+```yaml
+# multi-storage-class-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: local-path-config
+  namespace: local-path-storage
+data:
+  config.json: |-
+    {
+      "nodePathMap":[
+        {
+          "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+          "paths":["/opt/local-path-provisioner"]
+        }
+      ],
+      "storageClassConfigs": {
+        "local-path-ssd": {
+          "nodePathMap": [
+            {
+              "node":"DEFAULT_PATH_FOR_NON_LISTED_NODES",
+              "paths":["/mnt/ssd"]
+            }
+          ]
+        },
+        "local-path-shared": {
+          "sharedFileSystemPath": "/shared/storage"
+        }
+      }
+    }
+```
+
+#### 4.4.4 自定义 Helper Pod 模板
 
 ```yaml
   helperPod.yaml: |-
@@ -265,9 +320,15 @@ data:
     metadata:
       name: helper-pod
     spec:
+      priorityClassName: system-node-critical
+      tolerations:
+        - key: node.kubernetes.io/disk-pressure
+          operator: Exists
+          effect: NoSchedule
       containers:
       - name: helper-pod
-        image: busybox:1.35
+        image: busybox
+        imagePullPolicy: IfNotPresent
         command:
         - sh
         - -c
@@ -321,7 +382,7 @@ kubectl describe nodes
 **Kubernetes 版本支持：**
 
 - v0.0.32：支持 Kubernetes v1.12+
-- 推荐在 Kubernetes v1.24+ 上使用以获得最佳稳定性
+- 推荐在 Kubernetes v1.28+ 上使用以获得最佳稳定性和功能支持
 - 某些功能可能需要特定的 Kubernetes 版本
 
 **升级注意事项：**
@@ -333,6 +394,15 @@ kubectl get deployment local-path-provisioner -n local-path-storage -o yaml | gr
 # 平滑升级
 kubectl set image deployment/local-path-provisioner -n local-path-storage \
   local-path-provisioner=rancher/local-path-provisioner:v0.0.32
+```
+
+**配置热重载功能：**
+
+Local Path Provisioner 支持配置热重载，每30秒自动检查配置变更：
+
+```bash
+# 更新配置后，无需重启 Pod，配置会自动生效
+kubectl patch configmap local-path-config -n local-path-storage --patch '{"data":{"config.json":"{\"nodePathMap\":[{\"node\":\"DEFAULT_PATH_FOR_NON_LISTED_NODES\",\"paths\":[\"/new/path\"]}]}"}}'
 ```
 
 #### Q2: PV 创建失败
@@ -477,6 +547,8 @@ Local Path Provisioner 作为 Kubernetes 本地存储解决方案，具有以下
 3. **自动管理**：自动处理卷的创建、绑定和清理，减少运维负担
 4. **高性能**：基于本地存储，提供低延迟、高 IOPS 的存储性能
 5. **成本效益**：充分利用节点本地存储，无需额外的存储设备投资
+6. **配置灵活**：支持多存储类配置、共享文件系统和配置热重载
+7. **容错能力**：Helper Pod 支持在磁盘压力条件下运行，具备自动清理能力
 
 通过本文档的学习，您应该能够：
 
@@ -507,3 +579,7 @@ Local Path Provisioner 虽然在功能上相对简单，但它填补了 Kubernet
 - [Local Path Provisioner GitHub 仓库](https://github.com/rancher/local-path-provisioner)
 - [Kubernetes Local Persistent Volumes 官方文档](https://kubernetes.io/docs/concepts/storage/volumes/#local)
 - [Kubernetes Storage Classes 文档](https://kubernetes.io/docs/concepts/storage/storage-classes/)
+- [Kubernetes 官方文档 - Dynamic Volume Provisioning](https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/)
+- [Rancher Local Path Provisioner 官方文档](https://github.com/rancher/local-path-provisioner/blob/master/README.md)
+- [Kubernetes CSI 规范](https://kubernetes-csi.github.io/docs/)
+- [Kubernetes Storage 最佳实践](https://kubernetes.io/docs/concepts/storage/)
