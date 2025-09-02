@@ -1,4 +1,4 @@
-# Dynamic Resource Allocation in Kubernetes 入门指南
+# Kubernetes Resource Allocation 权威指南
 
 ## 1. 概述
 
@@ -63,19 +63,19 @@
 
 - **GPU 设备**：`NVIDIA GPU`、`AMD GPU`、`Intel GPU` 等
 - **网络设备**：`SR-IOV 网络接口`、`DPDK 设备` 等
-- **存储设备**：`NVMe SSD`、`高性能存储控制器` 等
+- **存储设备**：`NVMe SSD`、高性能存储控制器等
 - **AI 加速器**：`TPU`、`VPU`、`FPGA` 等专用 AI 芯片
-- **其他专用硬件**：`加密卡`、`压缩卡` 等
+- **其他专用硬件**：加密卡、压缩卡等
 
 #### 2.1.3 参考实现
 
 目前业界有许多成熟的 `Device Plugin` 实现：
 
 - **NVIDIA GPU Device Plugin**：支持 `NVIDIA GPU` 的发现和分配
-- **Intel GPU Device Plugin**：支持 `Intel 集成显卡` 和 `独立显卡`
+- **Intel GPU Device Plugin**：支持 `Intel` 集成显卡 和 独立显卡
 - **AMD GPU Device Plugin**：支持 `AMD GPU` 设备
-- **SR-IOV Network Device Plugin**：支持 `SR-IOV 网络设备`
-- **Intel QAT Device Plugin**：支持 `Intel QuickAssist 技术`
+- **SR-IOV Network Device Plugin**：支持 `SR-IOV` 网络设备
+- **Intel QAT Device Plugin**：支持 `Intel QuickAssist` 技术
 
 ### 2.2 Device Plugin 框架的局限性
 
@@ -331,9 +331,25 @@ kubectl get nodes -o custom-columns=NAME:.metadata.name,GPU-CAPACITY:.status.cap
 - **性能优化需求**：需要根据工作负载特点优化设备配置
 - **成本控制要求**：需要提高昂贵硬件的利用率
 
+#### 2.3.3 DRA 技术的应运而生
+
+正是在上述背景下，Kubernetes 社区开始设计和开发 `Dynamic Resource Allocation` (DRA) 技术。DRA 旨在解决 `Device Plugin` 框架的根本性局限，提供更加灵活、强大的资源管理能力。
+
+**DRA 的设计目标**：
+
+- **动态性**：支持运行时动态分配和配置设备资源
+- **精细化**：提供设备属性的详细描述和精确控制
+- **可扩展性**：通过标准化接口支持各种硬件设备
+- **拓扑感知**：考虑硬件拓扑关系进行智能调度
+- **多租户友好**：支持安全的资源共享和隔离机制
+
+通过引入全新的资源模型和管理机制，DRA 为 Kubernetes 带来了下一代设备资源管理能力，为云原生应用在异构硬件环境中的部署和运行提供了强有力的技术支撑。
+
 ---
 
 ## 3. DRA 核心概念、组件与架构
+
+本章将深入介绍 DRA 的核心概念和架构设计。通过理解这些基础概念，您将能够掌握 DRA 的工作原理，为后续的实践应用打下坚实基础。
 
 ### 3.1 核心资源
 
@@ -362,7 +378,7 @@ kubectl get nodes -o custom-columns=NAME:.metadata.name,GPU-CAPACITY:.status.cap
 **配置示例**：
 
 ```yaml
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
   name: nvidia-a100-gpu
@@ -400,7 +416,7 @@ spec:
 **配置示例**：
 
 ```yaml
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
 metadata:
   name: gpu-training-claim
@@ -476,40 +492,12 @@ spec:
 **YAML 示例**：
 
 ```yaml
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: ResourceSlice
 metadata:
   name: gpu-slice-node1
   # ResourceSlice 通常由驱动程序自动创建，无需手动管理
 spec:
-  # 设备列表
-  devices:
-  - name: "gpu-0"  # 设备唯一标识
-    basic:
-      attributes:
-        # 设备属性，用于 CEL 表达式过滤
-        "gpu-driver.example.com/model":
-          string: "A100"
-        "gpu-driver.example.com/memory":
-          string: "80Gi"
-        "gpu-driver.example.com/cuda-version":
-          string: "12.0"
-      capacity:
-        # 设备容量信息
-        memory: "80Gi"
-        compute-units: "6912"
-  - name: "gpu-1"
-    basic:
-      attributes:
-        "gpu-driver.example.com/model":
-          string: "A100"
-        "gpu-driver.example.com/memory":
-          string: "80Gi"
-        "gpu-driver.example.com/cuda-version":
-          string: "12.0"
-      capacity:
-        memory: "80Gi"
-        compute-units: "6912"
   # 驱动程序标识
   driver: "gpu-driver.example.com"
   # 关联的节点名称
@@ -518,7 +506,37 @@ spec:
   pool:
     name: "gpu-pool-1"
     generation: 1
-    resourceSliceCount: 2  # 该池总共有多少个 ResourceSlice
+    resourceSliceCount: 1  # 该池总共有多少个 ResourceSlice
+  # 设备列表
+  devices:
+  - name: "gpu-0"  # 设备唯一标识
+    attributes:
+      # 设备属性，用于 CEL 表达式过滤
+      "gpu-driver.example.com/model":
+        stringValue: "A100"
+      "gpu-driver.example.com/memory":
+        stringValue: "80Gi"
+      "gpu-driver.example.com/cuda-version":
+        stringValue: "12.0"
+    capacity:
+      # 设备容量信息
+      "gpu-driver.example.com/memory":
+        value: "80Gi"
+      "gpu-driver.example.com/compute-units":
+        value: "6912"
+  - name: "gpu-1"
+    attributes:
+      "gpu-driver.example.com/model":
+        stringValue: "A100"
+      "gpu-driver.example.com/memory":
+        stringValue: "80Gi"
+      "gpu-driver.example.com/cuda-version":
+        stringValue: "12.0"
+    capacity:
+      "gpu-driver.example.com/memory":
+        value: "80Gi"
+      "gpu-driver.example.com/compute-units":
+        value: "6912"
 ```
 
 ### 3.2 整体架构设计
@@ -572,9 +590,158 @@ sequenceDiagram
 3. **资源释放**：将设备标记为可用状态
 4. **状态更新**：更新 ResourceSlice 中的设备状态
 
-### 3.4 调度器集成
+### 3.4 CEL 表达式详解
 
-#### 3.4.1 调度扩展点
+#### 3.4.1 CEL 表达式语法
+
+**基本语法结构**：
+
+```yaml
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.attributes["gpu-driver.example.com/compute-capability"].stringValue >= "8.0" &&
+    device.capacity["gpu-driver.example.com/memory"].value >= quantity("16Gi")
+```
+
+**可用变量**：
+
+1. **device**：当前设备对象
+   - `device.driver`：设备驱动名称
+   - `device.attributes`：设备属性映射
+   - `device.capacity`：设备容量信息
+
+2. **request**：资源请求对象
+   - `request.count`：请求的设备数量
+   - `request.deviceClassName`：设备类名称
+
+**常用函数**：
+
+1. **字符串操作**：
+   - `contains()`：包含检查
+   - `startsWith()`：前缀检查
+   - `endsWith()`：后缀检查
+   - `matches()`：正则表达式匹配
+   - `in`：成员检查
+
+2. **数值比较**：
+   - `quantity()`：资源数量转换
+   - 比较操作符：`>`, `>=`, `<`, `<=`, `==`, `!=`
+
+3. **逻辑操作**：
+   - `&&`：逻辑与
+   - `||`：逻辑或
+   - `!`：逻辑非
+
+4. **集合操作**：
+   - `size()`：获取集合大小
+   - `all()`：全部满足条件
+   - `exists()`：存在满足条件的元素
+
+**实际应用示例**：
+
+```yaml
+# 1. 基础设备选择
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.attributes["gpu-driver.example.com/model"].stringValue in ["A100", "H100", "V100"]
+
+# 2. 内存容量范围选择
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.capacity["gpu-driver.example.com/memory"].value >= quantity("32Gi") &&
+    device.capacity["gpu-driver.example.com/memory"].value <= quantity("80Gi")
+
+# 3. 特性组合选择
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.attributes["gpu-driver.example.com/compute-capability"].stringValue >= "8.0" &&
+    device.attributes["gpu-driver.example.com/features"].stringValue.contains("tensor-cores") &&
+    device.attributes["gpu-driver.example.com/nvlink"].boolValue == true
+
+# 4. 拓扑感知选择
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.attributes["gpu-driver.example.com/numa-node"].stringValue == "0" &&
+    device.attributes["gpu-driver.example.com/pcie-switch"].stringValue.startsWith("pcie-switch-0")
+
+# 5. 性能等级选择
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    (
+      (device.attributes["gpu-driver.example.com/model"].stringValue == "A100" &&
+       device.capacity["gpu-driver.example.com/memory"].value >= quantity("40Gi")) ||
+      (device.attributes["gpu-driver.example.com/model"].stringValue == "H100" &&
+       device.capacity["gpu-driver.example.com/memory"].value >= quantity("80Gi"))
+    )
+
+# 6. 排除特定设备
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    !device.attributes["gpu-driver.example.com/model"].stringValue.contains("GTX") &&
+    device.attributes["gpu-driver.example.com/architecture"].stringValue != "Pascal"
+
+# 7. 多驱动支持
+cel:
+  expression: |
+    (
+      device.driver == "nvidia.com/gpu" &&
+      device.attributes["gpu-driver.example.com/compute-capability"].stringValue >= "7.0"
+    ) ||
+    (
+      device.driver == "amd.com/gpu" &&
+      device.attributes["amd-driver.example.com/architecture"].stringValue == "RDNA3"
+    )
+
+# 8. 容量计算表达式
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.capacity["gpu-driver.example.com/memory"].value + 
+    device.capacity["gpu-driver.example.com/shared-memory"].value >= quantity("48Gi")
+
+# 9. 正则表达式匹配
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    device.attributes["gpu-driver.example.com/model"].stringValue.matches("^(A100|H100|V100).*$") &&
+    device.attributes["gpu-driver.example.com/serial"].stringValue.matches("^[0-9A-F]{8}$")
+
+# 10. 复杂条件组合
+cel:
+  expression: |
+    device.driver == "nvidia.com/gpu" &&
+    size(device.attributes) > 5 &&
+    has(device.attributes["gpu-driver.example.com/cuda-version"]) &&
+    double(device.attributes["gpu-driver.example.com/cuda-version"].stringValue) >= 11.0
+```
+
+**CEL 表达式最佳实践**：
+
+1. **性能优化**：
+   - 将最具选择性的条件放在前面
+   - 避免不必要的复杂计算
+   - 使用 `in` 操作符替代多个 `||` 条件
+
+2. **可读性**：
+   - 使用适当的缩进和换行
+   - 添加注释说明复杂逻辑
+   - 将复杂表达式分解为多个简单条件
+
+3. **错误处理**：
+   - 使用 `has()` 函数检查属性存在性
+   - 提供默认值处理缺失属性
+   - 验证数据类型转换的安全性
+
+### 3.5 调度器集成
+
+#### 3.5.1 调度扩展点
 
 DRA 通过以下调度扩展点与 Kubernetes 调度器集成：
 
@@ -584,10 +751,10 @@ DRA 通过以下调度扩展点与 Kubernetes 调度器集成：
 4. **Reserve**：预留选定节点上的资源
 5. **PreBind**：在绑定前进行最终检查
 
-#### 3.4.2 调度策略
+#### 3.5.2 调度策略
 
 ```yaml
-apiVersion: kubescheduler.config.k8s.io/v1beta3
+apiVersion: kubescheduler.config.k8s.io/v1
 kind: KubeSchedulerConfiguration
 profiles:
 - schedulerName: dra-scheduler
@@ -611,9 +778,24 @@ profiles:
           weight: 100
 ```
 
+#### 3.5.3 小结
+
+通过本章的学习，我们深入了解了 DRA 的核心概念和架构设计。DRA 通过引入 `DeviceClass`、`ResourceClaim`、`ResourceClaimTemplate` 和 `ResourceSlice` 四种核心资源对象，构建了一套完整的动态设备资源管理体系。
+
+**关键要点回顾**：
+
+- **资源抽象**：DRA 提供了比 Device Plugin 更加精细化的资源抽象能力
+- **动态分配**：支持运行时动态分配和配置设备资源
+- **CEL 表达式**：提供了强大而灵活的设备选择和过滤机制
+- **调度集成**：与 Kubernetes 调度器深度集成，支持智能资源分配
+
+在下一章中，我们将通过具体的应用场景和 YAML 配置示例，学习如何在实际环境中使用 DRA 技术。
+
 ---
 
 ## 4. 实际应用场景与 YAML 配置实践
+
+本章将通过具体的应用场景，展示如何使用 DRA 技术解决实际问题。我们将提供详细的 YAML 配置示例，帮助您快速上手 DRA 的实际应用。
 
 ### 4.1 机器学习训练场景
 
@@ -628,7 +810,7 @@ profiles:
 
 ```yaml
 # 机器学习训练专用 GPU DeviceClass
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
   name: ml-training-gpu
@@ -641,10 +823,10 @@ spec:
   - cel:
       expression: |
         device.driver == "nvidia.com/gpu" &&
-        device.attributes["compute-capability"].string() >= "7.0" &&
-        device.attributes["memory"].quantity() >= quantity("16Gi") &&
-        device.attributes["features"].list().contains("cuda") &&
-        device.attributes["features"].list().contains("tensor-cores")
+        device.attributes["gpu-driver.example.com/compute-capability"].stringValue >= "7.0" &&
+        device.capacity["gpu-driver.example.com/memory"].value >= quantity("16Gi") &&
+        device.attributes["gpu-driver.example.com/features"].stringValue.contains("cuda") &&
+        device.attributes["gpu-driver.example.com/features"].stringValue.contains("tensor-cores")
   
   # 配置参数
   config:
@@ -664,7 +846,7 @@ spec:
 
 ---
 # 高端 GPU 专用 DeviceClass（A100/H100）
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
   name: premium-ml-gpu
@@ -676,12 +858,11 @@ spec:
   - cel:
       expression: |
         device.driver == "nvidia.com/gpu" &&
-        (
-          device.attributes["model"].string().contains("A100") ||
-          device.attributes["model"].string().contains("H100")
+        (device.attributes["gpu-driver.example.com/model"].stringValue.contains("A100") ||
+          device.attributes["gpu-driver.example.com/model"].stringValue.contains("H100")
         ) &&
-        device.attributes["memory"].quantity() >= quantity("40Gi") &&
-        device.attributes["nvlink"].bool() == true
+        device.capacity["gpu-driver.example.com/memory"].value >= quantity("40Gi") &&
+        device.attributes["gpu-driver.example.com/nvlink"].boolValue == true
   
   config:
   - opaque:
@@ -698,7 +879,7 @@ spec:
 
 ```yaml
 # 单 GPU 训练任务的 ResourceClaim
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
 metadata:
   name: single-gpu-training-claim
@@ -724,7 +905,7 @@ spec:
 
 ---
 # 多 GPU 分布式训练的 ResourceClaim
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: ResourceClaim
 metadata:
   name: multi-gpu-training-claim
@@ -922,7 +1103,7 @@ AI 推理服务通常具有以下特点：
 
 ```yaml
 # AI 推理专用 GPU DeviceClass
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
   name: ai-inference-gpu
@@ -953,7 +1134,7 @@ spec:
 
 ---
 # MIG 分区 DeviceClass
-apiVersion: resource.k8s.io/v1beta1
+apiVersion: resource.k8s.io/v1
 kind: DeviceClass
 metadata:
   name: mig-inference-gpu
@@ -1138,11 +1319,459 @@ spec:
         periodSeconds: 60
 ```
 
-## 5. 总结与展望
+#### 4.4 小结
 
-### 5.1 DRA 技术总结
+通过本章的实际应用场景分析，我们可以看到 DRA 技术在不同业务场景中的强大适应性和灵活性。从机器学习训练的高性能 GPU 需求，到 AI 推理服务的低延迟要求，再到高性能计算的专用硬件支持，DRA 都能提供精确、高效的资源管理解决方案。
 
-#### 5.1.1 核心优势
+这些实践案例展示了 DRA 相比传统 Device Plugin 的显著优势：
+
+- **精确的资源描述**：通过 CEL 表达式实现复杂的设备选择逻辑
+- **灵活的分配策略**：支持多种资源分配和调度策略
+- **完善的生命周期管理**：从资源申请到释放的全流程管理
+- **强大的扩展能力**：支持各种类型的硬件设备和应用场景
+
+在下一章中，我们将深入探讨 DRA 的高级特性和扩展功能，包括可消费容量特性、设备污点与容忍、实验性功能、以及性能优化最佳实践，帮助读者更好地掌握 DRA 技术的高级应用。
+
+---
+
+## 5. 高级特性与功能扩展
+
+本章将深入探讨 DRA 的高级特性和扩展功能，这些功能为复杂的企业级应用场景提供了更加精细和强大的资源管理能力。我们将重点介绍可消费容量特性、设备污点与容忍机制、实验性功能特性、以及性能优化的最佳实践。
+
+### 5.1 可消费容量特性 (Consumable Capacity)
+
+#### 5.1.1 特性概述
+
+`EnableConsumableCapacity` 是 DRA 中的一个重要特性，允许设备资源具有可消费的容量概念。与传统的设备分配不同，可消费容量支持部分资源的分配和共享，特别适用于内存、存储、网络带宽等可分割的资源类型。
+
+**核心概念**：
+
+1. **容量池管理**：设备可以定义多种类型的容量，如内存、存储、计算单元等
+2. **部分分配**：支持分配设备的部分容量而非整个设备
+3. **动态消费**：运行时可以动态调整资源消费量
+4. **容量追踪**：系统自动追踪已分配和剩余的容量
+
+#### 5.1.2 配置示例
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: shared-gpu-memory
+spec:
+  selectors:
+  - cel:
+      expression: |
+        device.driver == "nvidia.com/gpu" &&
+        device.capacity["nvidia.com/memory"].value >= quantity("8Gi")
+  
+  config:
+  - opaque:
+      driver: nvidia.com/gpu
+      parameters:
+        # 启用可消费容量特性
+        consumable-capacity: "enabled"
+        # 支持的容量类型
+        capacity-types:
+        - "nvidia.com/memory"
+        - "nvidia.com/compute-units"
+        # 最小分配单位
+        allocation-granularity:
+          "nvidia.com/memory": "1Gi"
+          "nvidia.com/compute-units": "128"
+```
+
+**ResourceClaim 使用示例**：
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: partial-gpu-claim
+spec:
+  devices:
+    requests:
+    - name: shared-gpu
+      deviceClassName: shared-gpu-memory
+      count: 1
+      constraints:
+      - capacity:
+          "nvidia.com/memory": "4Gi"  # 只需要 4GB 显存
+          "nvidia.com/compute-units": "1024"  # 部分计算单元
+```
+
+### 5.2 设备污点与容忍 (Device Taints and Tolerations)
+
+#### 5.2.1 功能说明
+
+设备污点机制允许设备标记特定的限制条件，只有具备相应容忍配置的 Pod 才能使用这些设备。这对于管理有特殊要求或限制的设备非常有用。
+
+**污点类型**：
+
+1. **NoSchedule**：阻止新的 Pod 调度到该设备
+2. **NoExecute**：驱逐已运行的不兼容 Pod
+
+#### 5.2.2 配置示例
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  name: tainted-gpu-slice
+spec:
+  driver: "nvidia.com/gpu"
+  pool:
+    name: "experimental-gpu-pool"
+    generation: 1
+    resourceSliceCount: 1
+  devices:
+  - name: "experimental-gpu-0"
+    attributes:
+      "nvidia.com/model":
+        stringValue: "RTX-4090"
+    capacity:
+      "nvidia.com/memory":
+        value: "24Gi"
+    # 设备污点配置
+    taints:
+    - key: "experimental"
+      value: "true"
+      effect: "NoSchedule"
+      timeAdded: "2024-01-01T00:00:00Z"
+    - key: "high-power-consumption"
+      value: "true"
+      effect: "NoExecute"
+```
+
+**Pod 容忍配置**：
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: experimental-workload
+spec:
+  resourceClaims:
+  - name: experimental-gpu
+    resourceClaimName: experimental-gpu-claim
+  
+  # 设备容忍配置
+  tolerations:
+  - key: "experimental"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+  - key: "high-power-consumption"
+    operator: "Equal"
+    value: "true"
+    effect: "NoExecute"
+    tolerationSeconds: 3600  # 1小时后驱逐
+  
+  containers:
+  - name: experimental-app
+    image: experimental:latest
+    resources:
+      claims:
+      - name: experimental-gpu
+```
+
+### 5.3 多节点设备选择 (Multi-Node Device Selection)
+
+#### 5.3.1 功能概述
+
+支持跨多个节点的设备选择和分配，特别适用于分布式计算和大规模并行处理场景。
+
+#### 5.3.2 配置示例
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  name: multi-node-gpu-slice
+spec:
+  driver: "nvidia.com/gpu"
+  pool:
+    name: "distributed-gpu-pool"
+    generation: 1
+    resourceSliceCount: 3
+  
+  # 支持所有节点
+  allNodes: true
+  
+  # 或者使用节点选择器
+  nodeSelector:
+    matchLabels:
+      gpu-tier: "high-performance"
+    matchExpressions:
+    - key: "zone"
+      operator: "In"
+      values: ["us-west-1a", "us-west-1b"]
+  
+  devices:
+  - name: "distributed-gpu"
+    attributes:
+      "nvidia.com/model":
+        stringValue: "H100"
+    capacity:
+      "nvidia.com/memory":
+        value: "80Gi"
+    # 每设备节点选择
+    perDeviceNodeSelection: true
+```
+
+### 5.4 实验性与孵化期功能
+
+#### 5.4.1 结构化参数 (Structured Parameters)
+
+结构化参数是 DRA 中的一个实验性功能，允许使用结构化的配置而非不透明的参数，提供更好的类型安全和验证能力。
+
+**功能特点**：
+
+1. **类型安全**：参数具有明确的类型定义
+2. **验证支持**：API 服务器可以验证参数的有效性
+3. **向后兼容**：与现有的不透明参数共存
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: structured-gpu-class
+spec:
+  selectors:
+  - cel:
+      expression: |
+        device.driver == "nvidia.com/gpu"
+  
+  # 结构化参数配置
+  config:
+  - structured:
+      driver: nvidia.com/gpu
+      # 使用结构化参数而非不透明参数
+      parameters:
+        apiVersion: gpu.nvidia.com/v1
+        kind: GPUConfig
+        spec:
+          computeMode: "exclusive"
+          memoryStrategy: "unified"
+          powerManagement:
+            enabled: true
+            maxPowerLimit: "300W"
+          features:
+            tensorCores: true
+            nvlink: true
+            mig:
+              enabled: false
+              strategy: "none"
+```
+
+#### 5.4.2 设备请求策略 (Device Request Policies)
+
+设备请求策略允许更精细地控制设备分配行为，包括亲和性、反亲和性和拓扑约束。
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: topology-aware-claim
+spec:
+  devices:
+    requests:
+    - name: numa-local-gpu
+      deviceClassName: high-performance-gpu
+      count: 2
+      # 设备请求策略
+      allocationPolicy:
+        # 设备亲和性
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: "numa-topology"
+                  operator: "In"
+                  values: ["numa-0", "numa-1"]
+          
+          # 设备间亲和性
+          deviceAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchLabels:
+                  "nvidia.com/numa-node": "0"
+              topologyKey: "nvidia.com/pcie-switch"
+        
+        # 分配策略
+        strategy: "compact"  # compact, spread, balanced
+```
+
+#### 5.4.3 动态设备发现 (Dynamic Device Discovery)
+
+动态设备发现允许运行时发现和注册新设备，无需重启节点或驱动程序。
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: DeviceClass
+metadata:
+  name: dynamic-discovery-class
+spec:
+  selectors:
+  - cel:
+      expression: |
+        device.driver == "dynamic.example.com/accelerator"
+  
+  config:
+  - opaque:
+      driver: dynamic.example.com/accelerator
+      parameters:
+        # 启用动态发现
+        dynamic-discovery: "enabled"
+        # 发现间隔
+        discovery-interval: "30s"
+        # 设备健康检查
+        health-check:
+          enabled: true
+          interval: "10s"
+          timeout: "5s"
+        # 热插拔支持
+        hot-plug: "enabled"
+```
+
+#### 5.4.4 设备监控与遥测 (Device Monitoring and Telemetry)
+
+提供设备使用情况的详细监控和遥测数据，支持性能优化和故障诊断。
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceSlice
+metadata:
+  name: monitored-gpu-slice
+spec:
+  driver: "nvidia.com/gpu"
+  pool:
+    name: "monitored-gpu-pool"
+    generation: 1
+    resourceSliceCount: 1
+  devices:
+  - name: "monitored-gpu-0"
+    attributes:
+      "nvidia.com/model":
+        stringValue: "A100"
+    capacity:
+      "nvidia.com/memory":
+        value: "40Gi"
+    
+    # 监控配置
+    monitoring:
+      enabled: true
+      metrics:
+      - name: "gpu-utilization"
+        type: "percentage"
+        interval: "1s"
+      - name: "memory-usage"
+        type: "bytes"
+        interval: "1s"
+      - name: "temperature"
+        type: "celsius"
+        interval: "5s"
+      - name: "power-consumption"
+        type: "watts"
+        interval: "1s"
+      
+      # 告警阈值
+      alerts:
+      - metric: "temperature"
+        threshold: "85"
+        operator: ">"
+        action: "throttle"
+      - metric: "power-consumption"
+        threshold: "400"
+        operator: ">"
+        action: "alert"
+```
+
+### 5.5 最佳实践与性能优化
+
+#### 5.5.1 CEL 表达式优化
+
+**性能优化建议**：
+
+**避免复杂的嵌套表达式**：
+
+```yaml
+# 不推荐：复杂嵌套
+expression: |
+  device.driver == "nvidia.com/gpu" &&
+  (device.attributes["nvidia.com/model"].stringValue.contains("A100") ||
+   device.attributes["nvidia.com/model"].stringValue.contains("H100")) &&
+  device.capacity["nvidia.com/memory"].value >= quantity("40Gi") &&
+  device.attributes["nvidia.com/features"].stringValue.contains("nvlink")
+
+# 推荐：简化表达式
+expression: |
+  device.driver == "nvidia.com/gpu" &&
+  device.attributes["nvidia.com/model"].stringValue in ["A100", "H100"] &&
+  device.capacity["nvidia.com/memory"].value >= quantity("40Gi")
+```
+
+**使用索引优化**：
+
+```yaml
+# 推荐：利用驱动程序索引
+expression: |
+  device.driver == "nvidia.com/gpu" &&  # 首先过滤驱动
+  device.attributes["nvidia.com/compute-capability"].stringValue >= "8.0"
+```
+
+**缓存常用表达式**：
+
+```yaml
+# 定义可重用的选择器
+selectors:
+- cel:
+    expression: 'device.driver == "nvidia.com/gpu"'
+    name: "nvidia-gpu-base"
+- cel:
+    expression: |
+      nvidia-gpu-base &&
+      device.capacity["nvidia.com/memory"].value >= quantity("16Gi")
+```
+
+#### 5.5.2 资源分配策略
+
+**分配策略选择**：
+
+1. **紧凑分配 (Compact)**：适用于需要高带宽互连的工作负载
+2. **分散分配 (Spread)**：适用于容错性要求高的工作负载
+3. **平衡分配 (Balanced)**：在性能和容错性之间平衡
+
+```yaml
+apiVersion: resource.k8s.io/v1
+kind: ResourceClaim
+metadata:
+  name: optimized-allocation
+spec:
+  devices:
+    requests:
+    - name: ml-training-gpus
+      deviceClassName: ml-gpu-class
+      count: 4
+      constraints:
+      - cel:
+          expression: |
+            device.attributes["nvidia.com/numa-node"].stringValue == "0"
+      
+      # 分配策略配置
+      allocationPolicy:
+        strategy: "compact"  # 优先同一 NUMA 节点
+        constraints:
+          topology:
+            required:
+            - topologyKey: "nvidia.com/pcie-switch"
+              maxSkew: 1
+```
+
+### 5.6 DRA 技术总结
+
+#### 5.6.1 核心优势
 
 `DRA` 作为 `Kubernetes` 资源管理的重要演进，带来了以下核心优势：
 
@@ -1167,7 +1796,7 @@ spec:
 - **多资源协调**：支持多种类型资源的协调分配
 - **性能优化**：通过本地化调度减少资源访问延迟
 
-#### 5.1.2 应用价值
+#### 5.6.2 应用价值
 
 **1. 企业级应用场景**，DRA 在企业级应用中展现出巨大价值：
 
@@ -1190,7 +1819,7 @@ spec:
 - **多租户支持**：安全地在多个团队间共享昂贵的硬件资源
 - **投资保护**：支持现有硬件设备的平滑迁移和升级
 
-### 5.2 结语
+### 5.7 结语
 
 `DRA` 代表了 `Kubernetes` 资源管理技术的重要发展方向。作为云原生生态系统的重要组成部分，`DRA` 不仅解决了传统 `Device Plugin` 的局限性，更为企业级应用提供了更加灵活、高效、可扩展的资源管理解决方案。
 
@@ -1198,7 +1827,7 @@ spec:
 
 对于企业和技术团队而言，及早了解和掌握 `DRA` 技术，不仅有助于提升现有系统的资源利用效率，更能为未来的技术发展做好充分准备。我们相信，随着 `DRA` 技术的不断成熟和生态系统的日益完善，它将在云原生领域发挥越来越重要的作用，为数字化转型和技术创新提供强有力的支撑。
 
-### 5.3 参考资料
+### 5.8 参考资料
 
 1. **Kubernetes Dynamic Resource Allocation 官方文档**：<https://kubernetes.io/docs/concepts/scheduling-eviction/dynamic-resource-allocation/>
 2. **Dynamic Resource Allocation in Kubernetes 技术博客**：<https://seifrajhi.github.io/blog/k8s-dynamic-resource-allocation-dra/>
