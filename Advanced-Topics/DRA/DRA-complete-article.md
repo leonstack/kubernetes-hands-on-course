@@ -50,9 +50,33 @@
 
 ---
 
-## 2. 从 Device Plugin 到 DRA 的演进
+## 2. 扩展资源分配方式的演进
 
-本章将介绍 `DRA` 技术的背景和演进历史，从传统的 `Device Plugin` 框架到 `DRA` 技术的发展过程。
+本章将介绍 Kubernetes 中扩展第三方资源的技术背景和演进历史，从设备厂商负责定制 Kubernetes 核心代码的传统方法，到 `Device Plugin` 框架，最后到 `DRA` 技术的发展过程。
+
+### 2.1 定制核心代码方式
+
+在 Kubernetes 设备插件（Device Plugin）机制出现之前，厂商若想为 Kubernetes 添加对第三方设备（如 GPU、FPGA、RDMA 网卡等）的支持，主要依赖于修改 Kubernetes 核心代码，即所谓的 “in-tree”（树内）集成方式。
+
+#### 2.1.1 工作原理
+
+厂商需要直接向 Kubernetes 的主代码库（如 `k8s.io/kubernetes`）提交代码，将对特定硬件设备的支持逻辑硬编码到 Kubernetes 的核心组件中，尤其是 Kubelet 和 Scheduler。
+
+1. 定义资源类型：</br>例如，在设备插件出现之前，NVIDIA GPU 的支持是通过一个名为 `alpha.kubernetes.io/nvidia-gpu`的特殊资源来实现的。这个资源名称是 Kubernetes 核心代码中预定义的，Kubelet 会硬编码地识别并管理这种资源。
+2. 嵌入设备发现和管理逻辑：</br>Kubelet 的代码中需要包含特定于硬件的逻辑，用于：
+   - 探测节点上是否存在该硬件（如通过检查 /proc、/sys 文件系统或调用 nvidia-smi）。
+   - 将探测到的设备数量上报给 API Server，更新 Node 的 status.capacity。
+   - 在 Pod 调度到该节点后，将设备（如 GPU 设备文件 /dev/nvidia0）挂载到容器中。
+3. 调度器集成：</br>Kubernetes 调度器需要理解这种新的资源类型，才能在调度 Pod 时考虑该资源的可用性（例如，确保申请了 nvidia-gpu 的 Pod 只能被调度到有可用 GPU 的节点上）。
+
+#### 2.1.2 局限性
+
+这种方式带来了诸多弊端：
+
+- 耦合度高，维护困难：</br>Kubernetes 核心代码与特定硬件厂商的逻辑紧密耦合。任何硬件相关的 bug 修复或功能更新都需要通过 Kubernetes 的发布周期，流程冗长且复杂。
+- 扩展性差：</br>每支持一种新设备（如一个新的 FPGA 型号或一个新型号的网卡），都必须向 Kubernetes 提交 PR。这不仅增加了 Kubernetes 社区的审查和维护负担，也使得硬件厂商的创新受制于 Kubernetes 的发布节奏。
+- 版本兼容性问题：</br>硬件驱动的更新和 Kubernetes 版本的更新是两个独立的进程。核心代码中硬编码的设备管理逻辑可能无法适应新版本的硬件驱动，导致兼容性问题。
+- 代码臃肿：随着支持的硬件种类越来越多，Kubernetes 的核心代码会变得越来越庞大和复杂，不利于核心功能的稳定和发展。
 
 ### 2.1 Device Plugin 框架简介
 
@@ -205,24 +229,6 @@ spec:
 - 无法实现 GPU 的时间片共享
 - 不支持 MIG（Multi-Instance GPU）等虚拟化技术
 - 缺乏资源隔离和 QoS 保证机制
-
-##### 2.2.1.5 扩展性限制
-
-添加新设备类型需要修改核心代码，扩展性受限：
-
-```go
-// 添加新设备类型需要修改 kubelet 源码
-// pkg/kubelet/cm/devicemanager/manager.go
-func (m *ManagerImpl) Start(activePods ActivePodsFunc, sourcesReady config.SourcesReady) error {
-    // 硬编码的设备类型检查
-    if strings.HasPrefix(resourceName, "nvidia.com/") {
-        // NVIDIA GPU 处理逻辑
-    } else if strings.HasPrefix(resourceName, "amd.com/") {
-        // AMD GPU 处理逻辑
-    }
-    // 添加新厂商需要修改此处代码
-}
-```
 
 #### 2.2.2 调度和分配的问题
 
