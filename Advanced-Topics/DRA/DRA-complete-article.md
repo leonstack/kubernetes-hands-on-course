@@ -62,7 +62,7 @@
 
 厂商需要直接向 Kubernetes 的主代码库（如 `k8s.io/kubernetes`）提交代码，将对特定硬件设备的支持逻辑硬编码到 Kubernetes 的核心组件中，尤其是 Kubelet 和 Scheduler。
 
-1. 定义资源类型：</br>例如，在设备插件出现之前，NVIDIA GPU 的支持是通过一个名为 `alpha.kubernetes.io/nvidia-gpu`的特殊资源来实现的。这个资源名称是 Kubernetes 核心代码中预定义的，Kubelet 会硬编码地识别并管理这种资源。
+1. 定义资源类型：</br>例如，在设备插件出现之前，通过在 Kubelet 中硬编码地识别并管理一个名为 `alpha.kubernetes.io/nvidia-gpu`的特殊资源来实现的。
 2. 嵌入设备发现和管理逻辑：</br>Kubelet 的代码中需要包含特定于硬件的逻辑，用于：
    - 探测节点上是否存在该硬件（如通过检查 /proc、/sys 文件系统或调用 nvidia-smi）。
    - 将探测到的设备数量上报给 API Server，更新 Node 的 status.capacity。
@@ -1852,5 +1852,6 @@ spec:
 5. **Intel Device Plugins for Kubernetes**：<https://github.com/intel/intel-device-plugins-for-kubernetes>
 6. **Kubernetes 资源管理最佳实践指南**：<https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/>
 7. **Cloud Native Computing Foundation (CNCF) 相关技术报告**：<https://www.cncf.io/reports/>
+8. **Kubernetes 早期修改核心代码支持 nvidia gpu 的 PR**：<https://github.com/kubernetes/kubernetes/pull/24836>
 
 ---
